@@ -1,5 +1,5 @@
 // 예시: CorsFilter.java
-package com.filter;
+package com.Saesori.filter;
 
 import java.io.IOException;
 // 💡 패키지 이름 변경: javax -> jakarta

@@ -38,3 +38,14 @@ yarn-error.log*
 *.class
 *.jar
 .gradle/
+
+# Secrets and config
+# Ignore DB property files that may contain credentials
+**/db.properties
+# Ignore common credential/key files
+*.keystore
+*.p12
+*.pem
+# Ignore any env files at repository root or elsewhere that may contain secrets
+.env
+.env.*
