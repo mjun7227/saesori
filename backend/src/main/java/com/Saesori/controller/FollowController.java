@@ -38,6 +38,45 @@ public class FollowController extends HttpServlet {
     }
 
     @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String pathInfo = request.getPathInfo();
+        response.setContentType("application/json");
+        response.setCharacterEncoding("UTF-8");
+
+        try {
+            // /api/follows/check?followerId={}&followingId={}
+            if (pathInfo != null && pathInfo.equals("/check")) {
+                String followerIdParam = request.getParameter("followerId");
+                String followingIdParam = request.getParameter("followingId");
+
+                if (followerIdParam == null || followingIdParam == null) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Both followerId and followingId parameters are required.");
+                    return;
+                }
+
+                try {
+                    int followerId = Integer.parseInt(followerIdParam);
+                    int followingId = Integer.parseInt(followingIdParam);
+
+                    boolean isFollowing = followDAO.isFollowing(followerId, followingId);
+                    
+                    PrintWriter out = response.getWriter();
+                    out.println(String.format("{\"isFollowing\": %b}", isFollowing));
+                    out.flush();
+
+                } catch (NumberFormatException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid ID format.");
+                }
+            } else {
+                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid follow GET endpoint.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+        }
+    }
+
+    @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
         response.setContentType("application/json");

@@ -45,7 +45,7 @@ public class UserDAO {
      * @return User 객체 (존재하지 않으면 null)
      */
     public User getUserByUsername(String username) {
-        String sql = "SELECT id, username, password, nickname, created_at FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password, nickname, created_at, follower_count, following_count FROM users WHERE username = ?";
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -79,7 +79,7 @@ public class UserDAO {
      * @return User 객체 (존재하지 않으면 null)
      */
     public User getUserById(int id) {
-        String sql = "SELECT id, username, password, nickname, created_at FROM users WHERE id = ?";
+        String sql = "SELECT id, username, password, nickname, created_at, follower_count, following_count FROM users WHERE id = ?";
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;

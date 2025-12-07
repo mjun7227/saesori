@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BirdModal from '../components/BirdModal';
@@ -12,7 +13,7 @@ export default function HomePage() {
     const fetchPosts = () => {
         api.get('/posts').then(res => {
             // 최신순 정렬
-            const sorted = res.data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setPosts(sorted);
         }).catch(err => console.error(err));
     };
@@ -26,14 +27,8 @@ export default function HomePage() {
         try {
             const res = await api.get(`/users/${user.id}/birds`);
             const currentBirds = res.data;
-
-            // 간단한 확인 로직: 이전에 알고 있던 새의 수보다 현재 새의 수가 많으면 새로운 새를 획득한 것으로 간주
-            // 실제 앱에서는 백엔드에서 획득 정보를 명확히 내려주는 것이 좋습니다.
-            // 여기서는 로컬 스토리지에 저장된 카운트와 비교하여 판단합니다.
-
             const knownCount = parseInt(localStorage.getItem(`bird_count_${user.id}`) || '0');
             if (currentBirds.length > knownCount) {
-                // 가장 최근에 획득한 새를 보여줍니다 (리스트의 마지막 요소라고 가정)
                 setNewBird(currentBirds[currentBirds.length - 1]);
                 localStorage.setItem(`bird_count_${user.id}`, currentBirds.length.toString());
             }
@@ -42,7 +37,6 @@ export default function HomePage() {
         }
     };
 
-    // 로드 시 새 카운트 초기화
     useEffect(() => {
         if (user) {
             api.get(`/users/${user.id}/birds`).then(res => {
@@ -65,10 +59,7 @@ export default function HomePage() {
             });
             setContent('');
             fetchPosts();
-
-            // 새 획득 여부 확인
-            setTimeout(checkForNewBirds, 500); // DB 업데이트 대기
-
+            setTimeout(checkForNewBirds, 500);
         } catch (error) {
             console.error("Post failed", error);
             alert('Failed to post');
@@ -116,13 +107,16 @@ export default function HomePage() {
                 {posts.map(post => (
                     <div key={post.id} className="bg-white p-5 rounded-xl shadow-sm border border-saesori-green/10 hover:border-saesori-green/30 transition-colors">
                         <div className="flex gap-3">
-                            <div className="w-10 h-10 rounded-full bg-saesori-yellow flex items-center justify-center font-bold text-saesori-green-dark shrink-0">
-                                {/* 사용자 아바타나 이름 정보가 부족하므로 임시로 'U' 표시 */}
-                                U
-                            </div>
+                            <Link to={`/profile/${post.userId}`} className="shrink-0">
+                                <div className="w-10 h-10 rounded-full bg-saesori-yellow flex items-center justify-center font-bold text-saesori-green-dark">
+                                    {post.nickname ? post.nickname.charAt(0).toUpperCase() : 'U'}
+                                </div>
+                            </Link>
                             <div className="flex-1">
                                 <div className="flex justify-between items-start">
-                                    <div className="font-bold text-saesori-green-dark">{post.nickname || `User ${post.userId}`}</div>
+                                    <Link to={`/profile/${post.userId}`} className="font-bold text-gray-800 hover:underline">
+                                        {post.nickname || `User ${post.userId}`}
+                                    </Link>
                                     {user && user.id === post.userId && (
                                         <button
                                             onClick={() => handleDelete(post.id)}
@@ -133,7 +127,7 @@ export default function HomePage() {
                                     )}
                                 </div>
                                 <p className="text-gray-700 mt-1 leading-relaxed">{post.content}</p>
-                                <div className="text-xs text-gray-400 mt-2">{new Date(post.created_at || Date.now()).toLocaleString()}</div>
+                                <div className="text-xs text-gray-400 mt-2">{new Date(post.createdAt || Date.now()).toLocaleString()}</div>
                             </div>
                         </div>
                     </div>

@@ -16,18 +16,44 @@ public class FollowDAO {
      * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
      */
     public boolean addFollow(int followerId, int followingId) {
-        String sql = "INSERT INTO follows (follower_id, following_id) VALUES (?, ?)";
+        String sqlInsert = "INSERT INTO follows (follower_id, following_id) VALUES (?, ?)";
+        String sqlUpdateFollower = "UPDATE users SET following_count = following_count + 1 WHERE id = ?";
+        String sqlUpdateFollowing = "UPDATE users SET follower_count = follower_count + 1 WHERE id = ?";
+        
         Connection conn = null;
-        PreparedStatement stmt = null;
+        PreparedStatement stmtInsert = null;
+        PreparedStatement stmtUpdateFollower = null;
+        PreparedStatement stmtUpdateFollowing = null;
+        
         try {
             conn = DBUtil.getConnection();
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, followerId);
-            stmt.setInt(2, followingId);
+            conn.setAutoCommit(false); // 트랜잭션 시작
 
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
+            // 1. 팔로우 관계 추가
+            stmtInsert = conn.prepareStatement(sqlInsert);
+            stmtInsert.setInt(1, followerId);
+            stmtInsert.setInt(2, followingId);
+            stmtInsert.executeUpdate();
+
+            // 2. 팔로워의 팔로잉 수 증가
+            stmtUpdateFollower = conn.prepareStatement(sqlUpdateFollower);
+            stmtUpdateFollower.setInt(1, followerId);
+            stmtUpdateFollower.executeUpdate();
+
+            // 3. 팔로잉 당하는 사람의 팔로워 수 증가
+            stmtUpdateFollowing = conn.prepareStatement(sqlUpdateFollowing);
+            stmtUpdateFollowing.setInt(1, followingId);
+            stmtUpdateFollowing.executeUpdate();
+
+            conn.commit(); // 트랜잭션 커밋
+            return true;
         } catch (SQLException e) {
+            try {
+                if (conn != null) conn.rollback(); // 오류 시 롤백
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            
             // 이미 팔로우한 경우 중복 항목 오류 처리
             if (e.getErrorCode() == 1062) { // MySQL 중복 항목 에러 코드
                 System.err.println("User " + followerId + " is already following " + followingId);
@@ -37,7 +63,9 @@ public class FollowDAO {
             e.printStackTrace();
             return false;
         } finally {
-            DBUtil.close(conn, stmt);
+            DBUtil.close(null, stmtUpdateFollowing);
+            DBUtil.close(null, stmtUpdateFollower);
+            DBUtil.close(conn, stmtInsert);
         }
     }
 
@@ -48,23 +76,55 @@ public class FollowDAO {
      * @return 성공적으로 제거되었으면 true, 그렇지 않으면 false
      */
     public boolean removeFollow(int followerId, int followingId) {
-        String sql = "DELETE FROM follows WHERE follower_id = ? AND following_id = ?";
+        String sqlDelete = "DELETE FROM follows WHERE follower_id = ? AND following_id = ?";
+        String sqlUpdateFollower = "UPDATE users SET following_count = following_count - 1 WHERE id = ?";
+        String sqlUpdateFollowing = "UPDATE users SET follower_count = follower_count - 1 WHERE id = ?";
+        
         Connection conn = null;
-        PreparedStatement stmt = null;
+        PreparedStatement stmtDelete = null;
+        PreparedStatement stmtUpdateFollower = null;
+        PreparedStatement stmtUpdateFollowing = null;
+        
         try {
             conn = DBUtil.getConnection();
-            stmt = conn.prepareStatement(sql);
-            stmt.setInt(1, followerId);
-            stmt.setInt(2, followingId);
+            conn.setAutoCommit(false); // 트랜잭션 시작
 
-            int rowsAffected = stmt.executeUpdate();
-            return rowsAffected > 0;
+            // 1. 팔로우 관계 삭제
+            stmtDelete = conn.prepareStatement(sqlDelete);
+            stmtDelete.setInt(1, followerId);
+            stmtDelete.setInt(2, followingId);
+            int rowsAffected = stmtDelete.executeUpdate();
+
+            if (rowsAffected > 0) {
+                // 2. 팔로워의 팔로잉 수 감소
+                stmtUpdateFollower = conn.prepareStatement(sqlUpdateFollower);
+                stmtUpdateFollower.setInt(1, followerId);
+                stmtUpdateFollower.executeUpdate();
+
+                // 3. 팔로잉 당하는 사람의 팔로워 수 감소
+                stmtUpdateFollowing = conn.prepareStatement(sqlUpdateFollowing);
+                stmtUpdateFollowing.setInt(1, followingId);
+                stmtUpdateFollowing.executeUpdate();
+                
+                conn.commit(); // 트랜잭션 커밋
+                return true;
+            } else {
+                conn.rollback();
+                return false;
+            }
         } catch (SQLException e) {
+            try {
+                if (conn != null) conn.rollback(); // 오류 시 롤백
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
             System.err.println("Error removing follow relationship: " + e.getMessage());
             e.printStackTrace();
             return false;
         } finally {
-            DBUtil.close(conn, stmt);
+            DBUtil.close(null, stmtUpdateFollowing);
+            DBUtil.close(null, stmtUpdateFollower);
+            DBUtil.close(conn, stmtDelete);
         }
     }
 

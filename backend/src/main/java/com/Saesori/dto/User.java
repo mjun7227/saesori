@@ -9,6 +9,8 @@ public class User {
     private String password; // 해시된 비밀번호
     private String nickname;
     private Timestamp createdAt;
+    private int followerCount;
+    private int followingCount;
 
     public User() {
     }
@@ -62,14 +64,32 @@ public class User {
         this.createdAt = createdAt;
     }
 
+    public int getFollowerCount() {
+        return followerCount;
+    }
+
+    public void setFollowerCount(int followerCount) {
+        this.followerCount = followerCount;
+    }
+
+    public int getFollowingCount() {
+        return followingCount;
+    }
+
+    public void setFollowingCount(int followingCount) {
+        this.followingCount = followingCount;
+    }
+
     @Override
     public String toString() {
         return "User{" +
                "id=" + id +
                ", username='" + username + "'" +
                ", password='[PROTECTED]'" +
-               ", nickname='" + nickname + "'" +
-               ", createdAt=" + createdAt +
-               '}';
+                ", nickname='" + nickname + "'" +
+                ", createdAt=" + createdAt +
+                ", followerCount=" + followerCount +
+                ", followingCount=" + followingCount +
+                '}';
     }
 }
