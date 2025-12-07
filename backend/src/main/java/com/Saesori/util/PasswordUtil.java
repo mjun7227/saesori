@@ -20,6 +20,9 @@ public class PasswordUtil {
 		}
 		return hashed;
 	}
+	public static boolean checkPassword(String plainPassword, String hashedPassword) {
+		return hashPassword(plainPassword).equals(hashedPassword);
+	}
 }
 
 
