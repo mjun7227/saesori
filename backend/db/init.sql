@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS posts (
     user_id INT NOT NULL,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    like_count INT DEFAULT 0 NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

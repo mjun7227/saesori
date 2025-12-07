@@ -1,11 +1,8 @@
 package com.Saesori.controller;
 
 import com.Saesori.dao.PostDAO;
-import com.Saesori.dao.BirdDAO;
-import com.Saesori.dao.UserBirdDAO;
 import com.Saesori.dto.Post;
-import com.Saesori.dto.Bird;
-import com.Saesori.dto.UserBird;
+import com.Saesori.service.BirdService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -23,8 +20,7 @@ public class PostController extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private ObjectMapper objectMapper;
     private PostDAO postDAO;
-    private BirdDAO birdDAO;
-    private UserBirdDAO userBirdDAO;
+    private BirdService birdService;
 
     @Override
     public void init() throws ServletException {
@@ -33,8 +29,7 @@ public class PostController extends HttpServlet {
         objectMapper.findAndRegisterModules();
         objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         postDAO = new PostDAO();
-        birdDAO = new BirdDAO();
-        userBirdDAO = new UserBirdDAO();
+        birdService = new BirdService();
     }
 
     @Override
@@ -95,7 +90,8 @@ public class PostController extends HttpServlet {
                     post.setUserId(user.getId());
 
                     if (postDAO.addPost(post)) {
-                        checkAndAwardBirds(post.getUserId(), "post_count");
+                        // BirdService를 통해 로직 수행
+                        birdService.checkAndAwardBirds(post.getUserId(), "post_count");
                         sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "게시글이 성공적으로 작성되었습니다.");
                     } else {
                         sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "게시글 작성에 실패했습니다.");
@@ -168,28 +164,6 @@ public class PostController extends HttpServlet {
         }
     }
 
-    private void checkAndAwardBirds(int userId, String changedConditionType) {
-        int currentConditionValue = 0;
-        if ("post_count".equals(changedConditionType)) {
-            currentConditionValue = postDAO.getPostsByUserId(userId).size();
-        } else {
-            return; // 게시글 로직만 처리
-        }
-
-        List<Bird> eligibleBirds = birdDAO.getBirdsByCondition(changedConditionType, currentConditionValue);
-
-        for (Bird bird : eligibleBirds) {
-            if (!userBirdDAO.hasUserAcquiredBird(userId, bird.getId())) {
-                UserBird userBird = new UserBird();
-                userBird.setUserId(userId);
-                userBird.setBirdId(bird.getId());
-                if (userBirdDAO.addUserBird(userBird)) {
-                    System.out.println("User " + userId + " acquired new bird: " + bird.getName());
-                }
-            }
-        }
-    }
-
     private void sendError(HttpServletResponse response, int statusCode, String message) throws IOException {
         response.setStatus(statusCode);
         PrintWriter out = response.getWriter();
@@ -204,3 +178,4 @@ public class PostController extends HttpServlet {
         out.flush();
     }
 }
+

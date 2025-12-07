@@ -62,6 +62,8 @@ public class UserDAO {
                 user.setPassword(rs.getString("password"));
                 user.setNickname(rs.getString("nickname"));
                 user.setCreatedAt(rs.getTimestamp("created_at"));
+                user.setFollowerCount(rs.getInt("follower_count"));
+                user.setFollowingCount(rs.getInt("following_count"));
                 return user;
             }
         } catch (SQLException e) {
@@ -96,6 +98,8 @@ public class UserDAO {
                 user.setPassword(rs.getString("password"));
                 user.setNickname(rs.getString("nickname"));
                 user.setCreatedAt(rs.getTimestamp("created_at"));
+                user.setFollowerCount(rs.getInt("follower_count"));
+                user.setFollowingCount(rs.getInt("following_count"));
                 return user;
             }
         } catch (SQLException e) {

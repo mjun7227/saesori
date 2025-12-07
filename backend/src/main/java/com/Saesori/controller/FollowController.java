@@ -1,10 +1,7 @@
 package com.Saesori.controller;
 
 import com.Saesori.dao.FollowDAO;
-import com.Saesori.dao.BirdDAO;
-import com.Saesori.dao.UserBirdDAO;
-import com.Saesori.dto.Bird;
-import com.Saesori.dto.UserBird;
+import com.Saesori.service.BirdService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
@@ -15,7 +12,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.List;
 import java.util.stream.Collectors;
 
 @WebServlet("/api/follows/*")
@@ -23,8 +19,7 @@ public class FollowController extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private ObjectMapper objectMapper;
     private FollowDAO followDAO;
-    private BirdDAO birdDAO;
-    private UserBirdDAO userBirdDAO;
+    private BirdService birdService;
 
     @Override
     public void init() throws ServletException {
@@ -33,8 +28,7 @@ public class FollowController extends HttpServlet {
         objectMapper.findAndRegisterModules();
         objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         followDAO = new FollowDAO();
-        birdDAO = new BirdDAO();
-        userBirdDAO = new UserBirdDAO();
+        birdService = new BirdService();
     }
 
     @Override
@@ -95,7 +89,7 @@ public class FollowController extends HttpServlet {
                     }
 
                     if (followDAO.addFollow(followRequest.getFollowerId(), followRequest.getFollowingId())) {
-                        checkAndAwardBirds(followRequest.getFollowerId(), "friend_count");
+                        birdService.checkAndAwardBirds(followRequest.getFollowerId(), "friend_count");
                         sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "Follow relationship added.");
                     } else {
                         sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Failed to add follow relationship (possibly already following).");
@@ -147,28 +141,6 @@ public class FollowController extends HttpServlet {
         }
     }
 
-    private void checkAndAwardBirds(int userId, String changedConditionType) {
-        int currentConditionValue = 0;
-        if ("friend_count".equals(changedConditionType)) { 
-            currentConditionValue = followDAO.getFollowingCount(userId); 
-        } else {
-            return;
-        }
-
-        List<Bird> eligibleBirds = birdDAO.getBirdsByCondition(changedConditionType, currentConditionValue);
-
-        for (Bird bird : eligibleBirds) {
-            if (!userBirdDAO.hasUserAcquiredBird(userId, bird.getId())) {
-                UserBird userBird = new UserBird();
-                userBird.setUserId(userId);
-                userBird.setBirdId(bird.getId());
-                if (userBirdDAO.addUserBird(userBird)) {
-                    System.out.println("User " + userId + " acquired new bird: " + bird.getName());
-                }
-            }
-        }
-    }
-
     private void sendError(HttpServletResponse response, int statusCode, String message) throws IOException {
         response.setStatus(statusCode);
         PrintWriter out = response.getWriter();
@@ -193,3 +165,4 @@ public class FollowController extends HttpServlet {
         public void setFollowingId(int followingId) { this.followingId = followingId; }
     }
 }
+

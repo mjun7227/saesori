@@ -69,7 +69,7 @@ function ProfilePage() {
         }
     };
 
-    if (!profileUser) return <div className="p-10 text-center">Loading...</div>;
+    if (!profileUser) return <div className="p-10 text-center">로딩 중...</div>;
 
     return (
         <div className="max-w-3xl mx-auto space-y-6">
@@ -84,22 +84,22 @@ function ProfilePage() {
                     <div className="flex gap-6 mt-4">
                         <div className="text-center">
                             <span className="block font-bold text-lg text-saesori-green-dark">{posts.length}</span>
-                            <span className="text-xs text-gray-500">Posts</span>
+                            <span className="text-xs text-gray-500">게시글</span>
                         </div>
                         <div className="text-center">
                             <span className="block font-bold text-lg text-saesori-green-dark">{profileUser.followerCount}</span>
-                            <span className="text-xs text-gray-500">Followers</span>
+                            <span className="text-xs text-gray-500">팔로워</span>
                         </div>
                         <div className="text-center">
                             <span className="block font-bold text-lg text-saesori-green-dark">{profileUser.followingCount}</span>
-                            <span className="text-xs text-gray-500">Following</span>
+                            <span className="text-xs text-gray-500">팔로잉</span>
                         </div>
                     </div>
                 </div>
                 <div>
                     {currentUser && currentUser.id === parseInt(userId) ? (
                         <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50">
-                            Edit Profile
+                            프로필 수정
                         </button>
                     ) : (
                         <button
@@ -109,7 +109,7 @@ function ProfilePage() {
                                 : 'bg-saesori-green text-white hover:bg-saesori-green-dark shadow-md'
                                 }`}
                         >
-                            {isFollowing ? 'Unfollow' : 'Follow'}
+                            {isFollowing ? '언팔로우' : '팔로우'}
                         </button>
                     )}
                 </div>
@@ -122,14 +122,14 @@ function ProfilePage() {
                         }`}
                     onClick={() => setActiveTab('posts')}
                 >
-                    Posts
+                    게시글
                 </button>
                 <button
                     className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'collection' ? 'border-saesori-green text-saesori-green' : 'border-transparent text-gray-500 hover:text-gray-700'
                         }`}
                     onClick={() => setActiveTab('collection')}
                 >
-                    Bird Collection
+                    새 도감
                 </button>
             </div>
 
@@ -138,7 +138,7 @@ function ProfilePage() {
                 {activeTab === 'posts' ? (
                     <div className="space-y-4">
                         {posts.length === 0 ? (
-                            <div className="text-center text-gray-500 py-10">No posts yet.</div>
+                            <div className="text-center text-gray-500 py-10">작성된 글이 없습니다.</div>
                         ) : (
                             posts.map(post => (
                                 <div key={post.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0 mb-4 last:mb-0">
@@ -151,7 +151,7 @@ function ProfilePage() {
                 ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {birds.length === 0 ? (
-                            <div className="col-span-full text-center text-gray-500 py-10">No birds collected yet.</div>
+                            <div className="col-span-full text-center text-gray-500 py-10">아직 수집한 새가 없습니다.</div>
                         ) : (
                             birds.map(bird => (
                                 <div key={bird.id} onClick={() => setSelectedBird(bird)} className="cursor-pointer group relative bg-gray-50 rounded-xl overflow-hidden aspect-square flex items-center justify-center border border-gray-100 hover:border-saesori-green hover:shadow-md transition-all">

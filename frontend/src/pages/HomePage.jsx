@@ -51,7 +51,7 @@ export default function HomePage() {
 
     const handlePost = async () => {
         if (!content.trim()) return;
-        if (!user) return alert('Please login to post');
+        if (!user) return alert('게시글을 작성하려면 로그인이 필요합니다');
 
         try {
             await api.post('/posts', {
@@ -62,12 +62,12 @@ export default function HomePage() {
             setTimeout(checkForNewBirds, 500);
         } catch (error) {
             console.error("Post failed", error);
-            alert('Failed to post');
+            alert('게시글 작성에 실패했습니다.');
         }
     };
 
     const handleDelete = async (postId) => {
-        if (!window.confirm("Are you sure you want to delete this chirp?")) return;
+        if (!window.confirm("정말로 이 게시글을 삭제하시겠습니까?")) return;
         if (!user) return;
 
         try {
@@ -75,7 +75,7 @@ export default function HomePage() {
             fetchPosts();
         } catch (error) {
             console.error("Delete failed", error);
-            alert(error.response?.data?.error || 'Failed to delete');
+            alert(error.response?.data?.error || '삭제에 실패했습니다.');
         }
     };
 
@@ -87,7 +87,7 @@ export default function HomePage() {
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-saesori-green/10">
                     <textarea
                         className="w-full p-3 bg-gray-50 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-saesori-green/50"
-                        placeholder="What's happening?"
+                        placeholder="무슨 일이 일어나고 있나요?"
                         rows="3"
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
@@ -97,7 +97,7 @@ export default function HomePage() {
                             onClick={handlePost}
                             className="bg-saesori-green text-white px-6 py-2 rounded-full font-bold hover:bg-saesori-green-dark transition-colors"
                         >
-                            Chirp
+                            지저귀기
                         </button>
                     </div>
                 </div>
@@ -122,7 +122,7 @@ export default function HomePage() {
                                             onClick={() => handleDelete(post.id)}
                                             className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
                                         >
-                                            Delete
+                                            삭제
                                         </button>
                                     )}
                                 </div>
@@ -133,7 +133,7 @@ export default function HomePage() {
                     </div>
                 ))}
                 {posts.length === 0 && (
-                    <div className="text-center text-gray-500 py-10">No chirps yet. Be the first!</div>
+                    <div className="text-center text-gray-500 py-10">아직 작성된 글이 없습니다. 첫 번째 글을 작성해보세요!</div>
                 )}
             </div>
         </div>
