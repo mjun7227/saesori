@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BirdModal from '../components/BirdModal';
+import PostItem from '../components/PostItem';
 
 function ProfilePage() {
     const { userId } = useParams();

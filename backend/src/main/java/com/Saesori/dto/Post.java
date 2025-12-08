@@ -8,6 +8,8 @@ public class Post {
     private String content;
     private Timestamp createdAt;
     private String nickname; // 화면 표시용 임시 필드
+    private int likeCount;
+    private boolean isLiked;
 
     public Post() {
     }
@@ -60,14 +62,32 @@ public class Post {
         this.nickname = nickname;
     }
 
+    public int getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public boolean isLiked() {
+        return isLiked;
+    }
+
+    public void setLiked(boolean liked) {
+        isLiked = liked;
+    }
+
     @Override
     public String toString() {
         return "Post{"
                + "id=" + id + ","
                + "userId=" + userId + ","
                + "nickname='" + nickname + "',"
-               + "content='" + content + "'"
-               + "createdAt=" + createdAt + 
+               + "content='" + content + "',"
+               + "createdAt=" + createdAt + ","
+               + "likeCount=" + likeCount + ","
+               + "isLiked=" + isLiked +
                '}';
     }
 }

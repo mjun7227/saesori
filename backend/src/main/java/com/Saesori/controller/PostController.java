@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
 
-@WebServlet(urlPatterns = {"/api/posts", "/api/posts/*"})
+@WebServlet(urlPatterns = { "/api/posts", "/api/posts/*" })
 public class PostController extends HttpServlet {
     private static final long serialVersionUID = 1L;
     private ObjectMapper objectMapper;
@@ -33,26 +33,32 @@ public class PostController extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
         System.out.println("getpost");
         try {
+            // Get current user for like status check
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user") : null;
+            int currentUserId = (user != null) ? user.getId() : 0;
+
             if (pathInfo == null || pathInfo.equals("/")) {
                 // /api/posts - 모든 게시글 조회
-                List<Post> posts = postDAO.getAllPosts();
+                List<Post> posts = postDAO.getAllPosts(currentUserId);
                 objectMapper.writeValue(response.getWriter(), posts);
                 return;
             }
 
             String[] pathParts = pathInfo.split("/");
-            
+
             // /api/posts/user/{userId} - 특정 사용자 게시글 조회
-            if (pathParts.length == 3 && pathParts[1].equals("user")) { 
+            if (pathParts.length == 3 && pathParts[1].equals("user")) {
                 try {
                     int userId = Integer.parseInt(pathParts[2]);
-                    List<Post> posts = postDAO.getPostsByUserId(userId);
+                    List<Post> posts = postDAO.getPostsByUserId(userId, currentUserId);
                     objectMapper.writeValue(response.getWriter(), posts);
                 } catch (NumberFormatException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid user ID format.");
@@ -62,12 +68,14 @@ public class PostController extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Internal server error: " + e.getMessage());
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
@@ -78,7 +86,8 @@ public class PostController extends HttpServlet {
                 try {
                     // 세션 확인
                     jakarta.servlet.http.HttpSession session = request.getSession(false);
-                    com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user") : null;
+                    com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user")
+                            : null;
 
                     if (user == null) {
                         sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다.");
@@ -104,12 +113,14 @@ public class PostController extends HttpServlet {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Internal server error: " + e.getMessage());
         }
     }
 
     @Override
-    protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
@@ -119,29 +130,33 @@ public class PostController extends HttpServlet {
             if (pathInfo != null && !pathInfo.equals("/")) {
                 String[] pathParts = pathInfo.split("/");
                 if (pathParts.length == 2) {
-                     try {
+                    try {
                         int postId = Integer.parseInt(pathParts[1]);
-                        
+
                         // 세션을 통한 인증/인가 확인
                         jakarta.servlet.http.HttpSession session = request.getSession(false);
-                        com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user") : null;
-                        
+                        com.Saesori.dto.User user = (session != null)
+                                ? (com.Saesori.dto.User) session.getAttribute("user")
+                                : null;
+
                         if (user == null) {
-                             sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "You must be logged in to delete a post.");
-                             return;
+                            sendError(response, HttpServletResponse.SC_UNAUTHORIZED,
+                                    "You must be logged in to delete a post.");
+                            return;
                         }
-                        
+
                         int requestingUserId = user.getId();
                         Post post = postDAO.getPostById(postId);
-                        
+
                         if (post == null) {
                             sendError(response, HttpServletResponse.SC_NOT_FOUND, "Post not found.");
                             return;
                         }
-                        
+
                         if (post.getUserId() != requestingUserId) {
-                             sendError(response, HttpServletResponse.SC_FORBIDDEN, "You are not authorized to delete this post.");
-                             return;
+                            sendError(response, HttpServletResponse.SC_FORBIDDEN,
+                                    "You are not authorized to delete this post.");
+                            return;
                         }
 
                         if (postDAO.deletePost(postId)) {
@@ -153,14 +168,15 @@ public class PostController extends HttpServlet {
                         sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID or User ID format.");
                     }
                 } else {
-                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post DELETE endpoint.");
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post DELETE endpoint.");
                 }
             } else {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post DELETE endpoint.");
             }
         } catch (Exception e) {
             e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                    "Internal server error: " + e.getMessage());
         }
     }
 
@@ -178,4 +194,3 @@ public class PostController extends HttpServlet {
         out.flush();
     }
 }
-

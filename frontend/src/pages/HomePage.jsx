@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BirdModal from '../components/BirdModal';
+import PostItem from '../components/PostItem';
 
 export default function HomePage() {
     const [posts, setPosts] = useState([]);
@@ -72,7 +73,7 @@ export default function HomePage() {
 
         try {
             await api.delete(`/posts/${postId}`);
-            fetchPosts();
+            fetchPosts(); // Refresh list
         } catch (error) {
             console.error("Delete failed", error);
             alert(error.response?.data?.error || '삭제에 실패했습니다.');
@@ -105,32 +106,12 @@ export default function HomePage() {
 
             <div className="space-y-4">
                 {posts.map(post => (
-                    <div key={post.id} className="bg-white p-5 rounded-xl shadow-sm border border-saesori-green/10 hover:border-saesori-green/30 transition-colors">
-                        <div className="flex gap-3">
-                            <Link to={`/profile/${post.userId}`} className="shrink-0">
-                                <div className="w-10 h-10 rounded-full bg-saesori-yellow flex items-center justify-center font-bold text-saesori-green-dark">
-                                    {post.nickname ? post.nickname.charAt(0).toUpperCase() : 'U'}
-                                </div>
-                            </Link>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-start">
-                                    <Link to={`/profile/${post.userId}`} className="font-bold text-gray-800 hover:underline">
-                                        {post.nickname || `User ${post.userId}`}
-                                    </Link>
-                                    {user && user.id === post.userId && (
-                                        <button
-                                            onClick={() => handleDelete(post.id)}
-                                            className="text-red-400 hover:text-red-600 text-xs px-2 py-1 rounded hover:bg-red-50 transition-colors"
-                                        >
-                                            삭제
-                                        </button>
-                                    )}
-                                </div>
-                                <p className="text-gray-700 mt-1 leading-relaxed">{post.content}</p>
-                                <div className="text-xs text-gray-400 mt-2">{new Date(post.createdAt || Date.now()).toLocaleString()}</div>
-                            </div>
-                        </div>
-                    </div>
+                    <PostItem
+                        key={post.id}
+                        post={post}
+                        currentUser={user}
+                        onDelete={handleDelete}
+                    />
                 ))}
                 {posts.length === 0 && (
                     <div className="text-center text-gray-500 py-10">아직 작성된 글이 없습니다. 첫 번째 글을 작성해보세요!</div>

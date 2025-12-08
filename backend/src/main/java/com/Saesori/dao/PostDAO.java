@@ -46,16 +46,25 @@ public class PostDAO {
 	 * @return Post 객체 리스트
 	 */
 	public List<Post> getAllPosts() {
+		return getAllPosts(0); // 로그인하지 않은 경우
+	}
+
+	public List<Post> getAllPosts(int currentUserId) {
 		List<Post> posts = new ArrayList<>();
 		// 사용자 테이블과 조인하여 닉네임 가져오기
-		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, u.nickname " + "FROM posts p "
-				+ "JOIN users u ON p.user_id = u.id " + "ORDER BY p.created_at DESC";
+		// LEFT JOIN with likes to check isLiked
+		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, u.nickname, "
+				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked "
+				+ "FROM posts p "
+				+ "JOIN users u ON p.user_id = u.id "
+				+ "ORDER BY p.created_at DESC";
 		Connection conn = null;
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
 		try {
 			conn = DBUtil.getConnection();
 			stmt = conn.prepareStatement(sql);
+			stmt.setInt(1, currentUserId);
 			rs = stmt.executeQuery();
 
 			while (rs.next()) {
@@ -64,7 +73,9 @@ public class PostDAO {
 				post.setUserId(rs.getInt("user_id"));
 				post.setContent(rs.getString("content"));
 				post.setCreatedAt(rs.getTimestamp("created_at"));
-				post.setNickname(rs.getString("nickname")); // 닉네임 설정
+				post.setLikeCount(rs.getInt("like_count"));
+				post.setNickname(rs.getString("nickname"));
+				post.setLiked(rs.getBoolean("is_liked"));
 				posts.add(post);
 			}
 		} catch (SQLException e) {
@@ -83,17 +94,26 @@ public class PostDAO {
 	 * @return 사용자가 작성한 Post 객체 리스트
 	 */
 	public List<Post> getPostsByUserId(int userId) {
+		return getPostsByUserId(userId, 0);
+	}
+
+	public List<Post> getPostsByUserId(int targetUserId, int currentUserId) {
 		List<Post> posts = new ArrayList<>();
 		// 사용자 테이블과 조인하여 닉네임 가져오기
-		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, u.nickname " + "FROM posts p "
-				+ "JOIN users u ON p.user_id = u.id " + "WHERE p.user_id = ? " + "ORDER BY p.created_at DESC";
+		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, u.nickname, "
+				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked "
+				+ "FROM posts p "
+				+ "JOIN users u ON p.user_id = u.id "
+				+ "WHERE p.user_id = ? "
+				+ "ORDER BY p.created_at DESC";
 		Connection conn = null;
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
 		try {
 			conn = DBUtil.getConnection();
 			stmt = conn.prepareStatement(sql);
-			stmt.setInt(1, userId);
+			stmt.setInt(1, currentUserId);
+			stmt.setInt(2, targetUserId);
 			rs = stmt.executeQuery();
 
 			while (rs.next()) {
@@ -102,7 +122,9 @@ public class PostDAO {
 				post.setUserId(rs.getInt("user_id"));
 				post.setContent(rs.getString("content"));
 				post.setCreatedAt(rs.getTimestamp("created_at"));
-				post.setNickname(rs.getString("nickname")); // Set nickname
+				post.setLikeCount(rs.getInt("like_count"));
+				post.setNickname(rs.getString("nickname"));
+				post.setLiked(rs.getBoolean("is_liked"));
 				posts.add(post);
 			}
 		} catch (SQLException e) {
