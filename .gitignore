@@ -1,8 +1,6 @@
 # IDE
 .metadata/
-.project
 .settings/
-.classpath
 .vscode/
 .idea/
 Servers/
@@ -36,7 +34,7 @@ yarn-error.log*
 
 # Misc
 *.class
-*.jar
+*.jar  # 모든 .jar 파일을 제외
 .gradle/
 
 # Secrets and config
@@ -49,3 +47,8 @@ yarn-error.log*
 # Ignore any env files at repository root or elsewhere that may contain secrets
 .env
 .env.*
+
+# --- 커밋에 포함시켜야 할 파일 지정 (Negation) ---
+# WEB-INF/lib 디렉토리 및 그 내부의 파일을 강제로 포함합니다.
+!**/WEB-INF/lib/
+!**/WEB-INF/lib/*
