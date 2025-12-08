@@ -54,6 +54,14 @@ CREATE TABLE IF NOT EXISTS user_birds (
     FOREIGN KEY (bird_id) REFERENCES birds(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS likes (
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+    PRIMARY KEY (post_id, user_id)
+);
+
 -- Initial bird data
 INSERT IGNORE INTO birds (id, name, image_url, description, condition_type, condition_value) VALUES
 (1, 'Blue Jay', 'https://example.com/images/blue_jay.png', 'A common blue bird.', 'friend_count', 5),
