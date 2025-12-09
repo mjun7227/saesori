@@ -9,16 +9,21 @@ public class Post {
     private Timestamp createdAt;
     private String nickname; // 화면 표시용 임시 필드
     private int likeCount;
+    private String type;
+    private int originalPostId;
     private boolean isLiked;
+    private Post originalPost;
 
     public Post() {
     }
 
-    public Post(int id, int userId, String content, Timestamp createdAt) {
+    public Post(int id, int userId, String content, Timestamp createdAt, int originalPostId) {
         this.id = id;
         this.userId = userId;
         this.content = content;
         this.createdAt = createdAt;
+        this.originalPostId=originalPostId;
+        
     }
 
     // Getter 및 Setter
@@ -77,8 +82,33 @@ public class Post {
     public void setLiked(boolean liked) {
         isLiked = liked;
     }
+    
 
-    @Override
+    public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public int getOriginalPostId() {
+		return originalPostId;
+	}
+
+	public void setOriginalPostId(int originalPostId) {
+		this.originalPostId = originalPostId;
+	}
+	
+	public Post getOriginalPost() {
+		return originalPost;
+	}
+
+	public void setOriginalPost(Post originalPost) {
+		this.originalPost = originalPost;
+	}
+
+	@Override
     public String toString() {
         return "Post{"
                + "id=" + id + ","

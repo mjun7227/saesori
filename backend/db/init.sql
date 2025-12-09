@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
     nickname VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     follower_count INT DEFAULT 0,
-    following_count INT DEFAULT 0
+    following_count INT DEFAULT 0,
+    posts_count INT NOT NULL DEFAULT 0
 );
 
 -- Table: posts

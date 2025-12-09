@@ -2,6 +2,7 @@ package com.Saesori.controller;
 
 import com.Saesori.dao.PostDAO;
 import com.Saesori.dto.Post;
+import com.Saesori.dto.User;
 import com.Saesori.service.BirdService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -38,11 +39,10 @@ public class PostController extends HttpServlet {
         String pathInfo = request.getPathInfo();
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");
-        System.out.println("getpost");
         try {
             // Get current user for like status check
             jakarta.servlet.http.HttpSession session = request.getSession(false);
-            com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user") : null;
+            User user = (session != null) ? (User) session.getAttribute("user") : null;
             int currentUserId = (user != null) ? user.getId() : 0;
 
             if (pathInfo == null || pathInfo.equals("/")) {
@@ -86,15 +86,19 @@ public class PostController extends HttpServlet {
                 try {
                     // 세션 확인
                     jakarta.servlet.http.HttpSession session = request.getSession(false);
-                    com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user")
+                    User user = (session != null) ? (User) session.getAttribute("user")
                             : null;
 
                     if (user == null) {
                         sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다.");
                         return;
                     }
-
+         
                     Post post = objectMapper.readValue(request.getReader(), Post.class);
+                    if (post.getContent() ==null ||post.getContent().trim().isEmpty()) {
+                    	sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "게시글 내용이 비어있습니다.");
+                    	return;
+                    }
                     // 세션에서 사용자 ID 설정
                     post.setUserId(user.getId());
 
@@ -108,7 +112,39 @@ public class PostController extends HttpServlet {
                 } catch (IOException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
                 }
-            } else {
+            } else if (pathInfo.endsWith("/repost")) {
+            	try {
+                    // 세션 확인
+                    jakarta.servlet.http.HttpSession session = request.getSession(false);
+                    com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user")
+                            : null;
+
+                    if (user == null) {
+                        sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다.");
+                        return;
+                    }
+         
+                    Post post = objectMapper.readValue(request.getReader(), Post.class);
+                    
+                    if (post.getContent() !=null || !post.getContent().trim().isEmpty()) {
+                    	sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "잘못된 재게시 요청입니다.");
+                    	return;
+                    }
+                    // 세션에서 사용자 ID 설정
+                    post.setUserId(user.getId());
+                    post.setType("REPOST");
+                    if (postDAO.addPost(post)) {
+                        // BirdService를 통해 로직 수행
+                        birdService.checkAndAwardBirds(post.getUserId(), "post_count");
+                        sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "게시글이 성공적으로 재게시되었습니다.");
+                    } else {
+                        sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "재게시에 실패했습니다.");
+                    }
+                } catch (IOException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
+                }
+            }
+            else {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post POST endpoint.");
             }
         } catch (Exception e) {
@@ -159,12 +195,12 @@ public class PostController extends HttpServlet {
                             return;
                         }
 
-                        if (postDAO.deletePost(postId)) {
+                        if (postDAO.deletePost(postId,requestingUserId)) {
                             sendJsonSuccess(response, HttpServletResponse.SC_OK, "Post deleted successfully.");
                         } else {
                             sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to delete post.");
                         }
-                    } catch (NumberFormatException e) {
+                    } catch (NumberFormatException e) { 
                         sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID or User ID format.");
                     }
                 } else {

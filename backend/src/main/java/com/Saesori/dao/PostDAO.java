@@ -1,6 +1,7 @@
 package com.Saesori.dao;
 
 import com.Saesori.dto.Post;
+import com.Saesori.dto.User;
 import com.Saesori.util.DBUtil;
 
 import java.sql.Connection;
@@ -21,7 +22,9 @@ public class PostDAO {
 	 */
 	public boolean addPost(Post post) {
 		String sql = "INSERT INTO posts (user_id, content) VALUES (?, ?)";
+		String updateCountSql = "UPDATE users SET posts_count = posts_count + 1 WHERE id = ?";
 		Connection conn = null;
+		PreparedStatement updatestmt=null; 
 		PreparedStatement stmt = null;
 		try {
 			conn = DBUtil.getConnection();
@@ -30,6 +33,11 @@ public class PostDAO {
 			stmt.setString(2, post.getContent());
 
 			int rowsAffected = stmt.executeUpdate();
+			if (rowsAffected >0) {
+				updatestmt=conn.prepareStatement(updateCountSql);
+				updatestmt.setInt(1, post.getUserId());
+				updatestmt.executeUpdate();
+			}
 			return rowsAffected > 0;
 		} catch (SQLException e) {
 			System.err.println("Error adding post: " + e.getMessage());
@@ -176,19 +184,60 @@ public class PostDAO {
 	 * @param postId 삭제할 게시글 ID
 	 * @return 성공적으로 삭제되었으면 true, 그렇지 않으면 false
 	 */
-	public boolean deletePost(int postId) {
+	public boolean deletePost(int postId, int userId) {
 		String sql = "DELETE FROM posts WHERE id = ?";
+		String updateCountSql = "UPDATE users SET posts_count = posts_count - 1 WHERE id = ?";
 		Connection conn = null;
 		PreparedStatement stmt = null;
+		PreparedStatement updatestmt=null;
 		try {
 			conn = DBUtil.getConnection();
 			stmt = conn.prepareStatement(sql);
 			stmt.setInt(1, postId);
 
 			int rowsAffected = stmt.executeUpdate();
+			if (rowsAffected >0) {
+				updatestmt=conn.prepareStatement(updateCountSql);
+				updatestmt.setInt(1, userId);
+				updatestmt.executeUpdate();
+			}
 			return rowsAffected > 0;
 		} catch (SQLException e) {
 			System.err.println("Error deleting post: " + e.getMessage());
+			e.printStackTrace();
+			return false;
+		} finally {
+			DBUtil.close(conn, stmt);
+		}
+	}
+	/**
+	 * 데이터베이스에 새 재게시글을 추가합니다.
+	 * 
+	 * @param post 재게시글 정보가 담긴 Post 객체
+	 * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
+	 */
+	public boolean rePost(Post post) {
+		String sql = "INSERT INTO posts (user_id, original_post_id, type) VALUES (?, ?, ?)";
+		String updateCountSql = "UPDATE users SET posts_count = posts_count + 1 WHERE id = ?";
+		Connection conn = null;
+		PreparedStatement updatestmt=null; 
+		PreparedStatement stmt = null;
+		try {
+			conn = DBUtil.getConnection();
+			stmt = conn.prepareStatement(sql);
+			stmt.setInt(1, post.getUserId());
+			stmt.setInt(2, post.getOriginalPostId());
+			stmt.setString(3,post.getType());
+
+			int rowsAffected = stmt.executeUpdate();
+			if (rowsAffected >0) {
+				updatestmt=conn.prepareStatement(updateCountSql);
+				updatestmt.setInt(1, post.getUserId());
+				updatestmt.executeUpdate();
+			}
+			return rowsAffected > 0;
+		} catch (SQLException e) {
+			System.err.println("Error adding post: " + e.getMessage());
 			e.printStackTrace();
 			return false;
 		} finally {

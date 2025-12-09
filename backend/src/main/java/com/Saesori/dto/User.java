@@ -11,6 +11,7 @@ public class User {
     private Timestamp createdAt;
     private int followerCount;
     private int followingCount;
+    private int postsCount;
 
     public User() {
     }
@@ -79,8 +80,15 @@ public class User {
     public void setFollowingCount(int followingCount) {
         this.followingCount = followingCount;
     }
+    public int getPostsCount() {
+		return postsCount;
+	}
 
-    @Override
+	public void setPostsCount(int postsCount) {
+		this.postsCount = postsCount;
+	}
+
+	@Override
     public String toString() {
         return "User{" +
                "id=" + id +
@@ -90,6 +98,7 @@ public class User {
                 ", createdAt=" + createdAt +
                 ", followerCount=" + followerCount +
                 ", followingCount=" + followingCount +
+                ", postsCount="+postsCount +
                 '}';
     }
 }
