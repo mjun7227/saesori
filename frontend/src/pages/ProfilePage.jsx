@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import BirdModal from '../components/BirdModal';
+import PostCard from '../components/PostCard';
 import PostItem from '../components/PostItem';
 
 function ProfilePage() {
@@ -142,10 +143,15 @@ function ProfilePage() {
                             <div className="text-center text-gray-500 py-10">작성된 글이 없습니다.</div>
                         ) : (
                             posts.map(post => (
-                                <div key={post.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0 mb-4 last:mb-0">
-                                    <div className="text-xs text-gray-400 mb-1">{new Date(post.createdAt).toLocaleString()}</div>
-                                    <div className="text-gray-800">{post.content}</div>
-                                </div>
+                                <PostCard
+                                    key={post.id}
+                                    post={post}
+                                    currentUser={currentUser}
+                                    onDelete={null}
+                                    onRepost={null}
+                                    onQuote={null}
+                                    showActions={false}
+                                />
                             ))
                         )}
                     </div>

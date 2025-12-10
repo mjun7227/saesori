@@ -24,7 +24,7 @@ public class PostDAO {
 		String sql = "INSERT INTO posts (user_id, content) VALUES (?, ?)";
 		String updateCountSql = "UPDATE users SET posts_count = posts_count + 1 WHERE id = ?";
 		Connection conn = null;
-		PreparedStatement updatestmt=null; 
+		PreparedStatement updatestmt = null;
 		PreparedStatement stmt = null;
 		try {
 			conn = DBUtil.getConnection();
@@ -33,8 +33,8 @@ public class PostDAO {
 			stmt.setString(2, post.getContent());
 
 			int rowsAffected = stmt.executeUpdate();
-			if (rowsAffected >0) {
-				updatestmt=conn.prepareStatement(updateCountSql);
+			if (rowsAffected > 0) {
+				updatestmt = conn.prepareStatement(updateCountSql);
 				updatestmt.setInt(1, post.getUserId());
 				updatestmt.executeUpdate();
 			}
@@ -61,11 +61,9 @@ public class PostDAO {
 		List<Post> posts = new ArrayList<>();
 		// 사용자 테이블과 조인하여 닉네임 가져오기
 		// LEFT JOIN with likes to check isLiked
-		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, u.nickname, "
-				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked "
-				+ "FROM posts p "
-				+ "JOIN users u ON p.user_id = u.id "
-				+ "ORDER BY p.created_at DESC";
+		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
+				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked " + "FROM posts p "
+				+ "JOIN users u ON p.user_id = u.id " + "ORDER BY p.created_at DESC";
 		Connection conn = null;
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
@@ -84,6 +82,15 @@ public class PostDAO {
 				post.setLikeCount(rs.getInt("like_count"));
 				post.setNickname(rs.getString("nickname"));
 				post.setLiked(rs.getBoolean("is_liked"));
+				post.setType(rs.getString("type"));
+				post.setOriginalPostId(rs.getInt("original_post_id"));
+				
+				// 리포스트나 인용인 경우 원본 게시글 정보 가져오기
+				if (("REPOST".equals(post.getType()) || "QUOTE".equals(post.getType())) && post.getOriginalPostId() > 0) {
+					Post originalPost = getPostById(post.getOriginalPostId());
+					post.setOriginalPost(originalPost);
+				}
+				
 				posts.add(post);
 			}
 		} catch (SQLException e) {
@@ -108,12 +115,9 @@ public class PostDAO {
 	public List<Post> getPostsByUserId(int targetUserId, int currentUserId) {
 		List<Post> posts = new ArrayList<>();
 		// 사용자 테이블과 조인하여 닉네임 가져오기
-		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, u.nickname, "
-				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked "
-				+ "FROM posts p "
-				+ "JOIN users u ON p.user_id = u.id "
-				+ "WHERE p.user_id = ? "
-				+ "ORDER BY p.created_at DESC";
+		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
+				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked " + "FROM posts p "
+				+ "JOIN users u ON p.user_id = u.id " + "WHERE p.user_id = ? " + "ORDER BY p.created_at DESC";
 		Connection conn = null;
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
@@ -133,6 +137,15 @@ public class PostDAO {
 				post.setLikeCount(rs.getInt("like_count"));
 				post.setNickname(rs.getString("nickname"));
 				post.setLiked(rs.getBoolean("is_liked"));
+				post.setType(rs.getString("type"));
+				post.setOriginalPostId(rs.getInt("original_post_id"));
+				
+				// 리포스트나 인용인 경우 원본 게시글 정보 가져오기
+				if (("REPOST".equals(post.getType()) || "QUOTE".equals(post.getType())) && post.getOriginalPostId() > 0) {
+					Post originalPost = getPostById(post.getOriginalPostId());
+					post.setOriginalPost(originalPost);
+				}
+				
 				posts.add(post);
 			}
 		} catch (SQLException e) {
@@ -152,7 +165,10 @@ public class PostDAO {
 	 */
 	public Post getPostById(int postId) {
 		Post post = null;
-		String sql = "SELECT id, user_id, content, created_at FROM posts WHERE id = ?"; // 인증 확인용이므로 닉네임 불필요 일반적으로
+		String sql = "SELECT p.id, p.user_id, p.content, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname "
+				+ "FROM posts p "
+				+ "JOIN users u ON p.user_id = u.id "
+				+ "WHERE p.id = ?";
 		Connection conn = null;
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
@@ -168,6 +184,10 @@ public class PostDAO {
 				post.setUserId(rs.getInt("user_id"));
 				post.setContent(rs.getString("content"));
 				post.setCreatedAt(rs.getTimestamp("created_at"));
+				post.setLikeCount(rs.getInt("like_count"));
+				post.setNickname(rs.getString("nickname"));
+				post.setType(rs.getString("type"));
+				post.setOriginalPostId(rs.getInt("original_post_id"));
 			}
 		} catch (SQLException e) {
 			System.err.println("Error getting post by ID: " + e.getMessage());
@@ -189,15 +209,19 @@ public class PostDAO {
 		String updateCountSql = "UPDATE users SET posts_count = posts_count - 1 WHERE id = ?";
 		Connection conn = null;
 		PreparedStatement stmt = null;
-		PreparedStatement updatestmt=null;
+		PreparedStatement updatestmt = null;
 		try {
 			conn = DBUtil.getConnection();
+			
+			// 먼저 리포스트 삭제 (인용은 유지)
+			deleteRepostsByOriginalId(postId);
+			
 			stmt = conn.prepareStatement(sql);
 			stmt.setInt(1, postId);
 
 			int rowsAffected = stmt.executeUpdate();
-			if (rowsAffected >0) {
-				updatestmt=conn.prepareStatement(updateCountSql);
+			if (rowsAffected > 0) {
+				updatestmt = conn.prepareStatement(updateCountSql);
 				updatestmt.setInt(1, userId);
 				updatestmt.executeUpdate();
 			}
@@ -210,6 +234,33 @@ public class PostDAO {
 			DBUtil.close(conn, stmt);
 		}
 	}
+
+	/**
+	 * 원본 게시글이 삭제될 때 해당 게시글의 리포스트만 삭제합니다.
+	 * 인용 게시글은 유지됩니다.
+	 * 
+	 * @param originalPostId 원본 게시글 ID
+	 */
+	public void deleteRepostsByOriginalId(int originalPostId) {
+		String sql = "DELETE FROM posts WHERE original_post_id = ? AND type = 'REPOST'";
+		Connection conn = null;
+		PreparedStatement stmt = null;
+		try {
+			conn = DBUtil.getConnection();
+			stmt = conn.prepareStatement(sql);
+			stmt.setInt(1, originalPostId);
+			int deleted = stmt.executeUpdate();
+			if (deleted > 0) {
+				System.out.println("Deleted " + deleted + " repost(s) of original post " + originalPostId);
+			}
+		} catch (SQLException e) {
+			System.err.println("Error deleting reposts: " + e.getMessage());
+			e.printStackTrace();
+		} finally {
+			DBUtil.close(conn, stmt);
+		}
+	}
+
 	/**
 	 * 데이터베이스에 새 재게시글을 추가합니다.
 	 * 
@@ -220,18 +271,54 @@ public class PostDAO {
 		String sql = "INSERT INTO posts (user_id, original_post_id, type) VALUES (?, ?, ?)";
 		String updateCountSql = "UPDATE users SET posts_count = posts_count + 1 WHERE id = ?";
 		Connection conn = null;
-		PreparedStatement updatestmt=null; 
+		PreparedStatement updatestmt = null;
 		PreparedStatement stmt = null;
 		try {
 			conn = DBUtil.getConnection();
 			stmt = conn.prepareStatement(sql);
 			stmt.setInt(1, post.getUserId());
 			stmt.setInt(2, post.getOriginalPostId());
-			stmt.setString(3,post.getType());
+			stmt.setString(3, post.getType());
 
 			int rowsAffected = stmt.executeUpdate();
-			if (rowsAffected >0) {
-				updatestmt=conn.prepareStatement(updateCountSql);
+			if (rowsAffected > 0) {
+				updatestmt = conn.prepareStatement(updateCountSql);
+				updatestmt.setInt(1, post.getUserId());
+				updatestmt.executeUpdate();
+			}
+			return rowsAffected > 0;
+		} catch (SQLException e) {
+			System.err.println("Error adding post: " + e.getMessage());
+			e.printStackTrace();
+			return false;
+		} finally {
+			DBUtil.close(conn, stmt);
+		}
+	}
+
+	/**
+	 * 데이터베이스에 새 인용 게시글을 추가합니다.
+	 * 
+	 * @param post 게시글 정보가 담긴 Post 객체
+	 * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
+	 */
+	public boolean addQuote(Post post) {
+		String sql = "INSERT INTO posts (user_id, original_post_id, type, content) VALUES (?, ?, ?,?)";
+		String updateCountSql = "UPDATE users SET posts_count = posts_count + 1 WHERE id = ?";
+		Connection conn = null;
+		PreparedStatement updatestmt = null;
+		PreparedStatement stmt = null;
+		try {
+			conn = DBUtil.getConnection();
+			stmt = conn.prepareStatement(sql);
+			stmt.setInt(1, post.getUserId());
+			stmt.setInt(2, post.getOriginalPostId());
+			stmt.setString(3, post.getType());
+			stmt.setString(4, post.getContent());
+
+			int rowsAffected = stmt.executeUpdate();
+			if (rowsAffected > 0) {
+				updatestmt = conn.prepareStatement(updateCountSql);
 				updatestmt.setInt(1, post.getUserId());
 				updatestmt.executeUpdate();
 			}

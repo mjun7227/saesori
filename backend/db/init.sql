@@ -19,9 +19,11 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS posts (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    content TEXT NOT NULL,
+    content TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     like_count INT DEFAULT 0 NOT NULL,
+    type VARCHAR(20) DEFAULT 'ORIGINAL',
+    original_post_id INT DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

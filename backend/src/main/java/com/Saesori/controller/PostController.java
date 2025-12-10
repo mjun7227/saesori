@@ -95,7 +95,7 @@ public class PostController extends HttpServlet {
                     }
          
                     Post post = objectMapper.readValue(request.getReader(), Post.class);
-                    if (post.getContent() ==null ||post.getContent().trim().isEmpty()) {
+                    if (post.getContent() ==null || post.getContent().trim().isEmpty()) {
                     	sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "게시글 내용이 비어있습니다.");
                     	return;
                     }
@@ -112,7 +112,9 @@ public class PostController extends HttpServlet {
                 } catch (IOException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
                 }
-            } else if (pathInfo.endsWith("/repost")) {
+            } 
+            // 알티
+            else if (pathInfo.endsWith("/repost")) {
             	try {
                     // 세션 확인
                     jakarta.servlet.http.HttpSession session = request.getSession(false);
@@ -126,19 +128,53 @@ public class PostController extends HttpServlet {
          
                     Post post = objectMapper.readValue(request.getReader(), Post.class);
                     
-                    if (post.getContent() !=null || !post.getContent().trim().isEmpty()) {
-                    	sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "잘못된 재게시 요청입니다.");
+                    // 리포스트는 content가 비어있어야 함
+                    if (post.getContent() != null && !post.getContent().trim().isEmpty()) {
+                    	sendError(response, HttpServletResponse.SC_BAD_REQUEST, "재게시는 내용을 포함할 수 없습니다.");
                     	return;
                     }
                     // 세션에서 사용자 ID 설정
                     post.setUserId(user.getId());
                     post.setType("REPOST");
-                    if (postDAO.addPost(post)) {
+                    if (postDAO.rePost(post)) {
                         // BirdService를 통해 로직 수행
                         birdService.checkAndAwardBirds(post.getUserId(), "post_count");
                         sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "게시글이 성공적으로 재게시되었습니다.");
                     } else {
                         sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "재게시에 실패했습니다.");
+                    }
+                } catch (IOException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
+                }
+            }
+            //인용
+            else if (pathInfo.endsWith("/quote")) {
+            	try {
+                    // 세션 확인
+                    jakarta.servlet.http.HttpSession session = request.getSession(false);
+                    com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user")
+                            : null;
+
+                    if (user == null) {
+                        sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다.");
+                        return;
+                    }
+         
+                    Post post = objectMapper.readValue(request.getReader(), Post.class);
+                    
+                    if (post.getContent() ==null || post.getContent().trim().isEmpty()) {
+                    	sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "잘못된 게시글 요청입니다.");
+                    	return;
+                    }
+                    // 세션에서 사용자 ID 설정
+                    post.setUserId(user.getId());
+                    post.setType("QUOTE");
+                    if (postDAO.addQuote(post)) {
+                        // BirdService를 통해 로직 수행
+                        birdService.checkAndAwardBirds(post.getUserId(), "post_count");
+                        sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "게시글이 성공적으로 작성되었습니다.");
+                    } else {
+                        sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "게시에 실패했습니다.");
                     }
                 } catch (IOException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
