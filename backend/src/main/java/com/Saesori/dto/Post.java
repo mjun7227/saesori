@@ -9,6 +9,7 @@ public class Post {
     private String content;
     private Timestamp createdAt;
     private String nickname; // 화면 표시용 임시 필드
+    private String handle; // 작성자 handle 표시용
     private int likeCount;
     private String type; // ORIGINAL, REPOST, QUOTE, REPLY
     private int originalPostId;
@@ -68,6 +69,14 @@ public class Post {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public String getHandle() {
+        return handle;
+    }
+
+    public void setHandle(String handle) {
+        this.handle = handle;
     }
 
     public int getLikeCount() {
@@ -135,6 +144,7 @@ public class Post {
                + "id=" + id + ","
                + "userId=" + userId + ","
                + "nickname='" + nickname + "',"
+               + "handle='" + handle + "',"
                + "content='" + content + "',"
                + "createdAt=" + createdAt + ","
                + "likeCount=" + likeCount + ","

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import BirdModal from '../components/BirdModal';
 import PostCard from '../components/PostCard';
 import TreeDecoration from '../components/TreeDecoration';
+import ProfileEditModal from '../components/ProfileEditModal';
  
 export default function ProfilePage() {
   const { userId } = useParams();
@@ -15,6 +16,7 @@ export default function ProfilePage() {
   const [posts, setPosts] = useState([]);
   const [birds, setBirds] = useState([]);
   const [selectedBird, setSelectedBird] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const fetchProfile = useCallback(() => {
     api
@@ -94,7 +96,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-800">{profileUser.nickname}</h1>
-            <p className="text-gray-500 text-sm">@{profileUser.username}</p>
+            <p className="text-gray-500 text-sm">@{profileUser.handle}</p>
             <div className="flex gap-6 mt-4">
               <div className="text-center">
                 <span className="block font-bold text-lg text-saesori-green-dark">{posts.length}</span>
@@ -112,7 +114,7 @@ export default function ProfilePage() {
           </div>
           <div>
             {currentUser && currentUser.id === parseInt(userId, 10) ? (
-              <button className="px-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">프로필 수정</button>
+              <button onClick={() => setShowEditModal(true)} className="px-4 py-2 border border-gray-300 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">프로필 수정</button>
             ) : (
               <button
                 onClick={handleFollowToggle}
@@ -173,6 +175,16 @@ export default function ProfilePage() {
       <TreeDecoration position="right" />
 
       {selectedBird && <BirdModal bird={selectedBird} onClose={() => setSelectedBird(null)} />}
+
+      {showEditModal && (
+        <ProfileEditModal
+          user={profileUser}
+          onClose={() => setShowEditModal(false)}
+          onSaved={() => {
+            fetchProfile();
+          }}
+        />
+      )}
     </div>
   );
 }

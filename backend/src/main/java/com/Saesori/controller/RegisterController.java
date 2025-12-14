@@ -36,8 +36,8 @@ public class RegisterController extends HttpServlet {
 
         try {
             User user = objectMapper.readValue(request.getReader(), User.class);
-            if (userDAO.getUserByUsername(user.getUsername()) != null) {
-                sendError(response, HttpServletResponse.SC_CONFLICT, "Username already exists.");
+            if (userDAO.getUserByHandle(user.getHandle()) != null) {
+                sendError(response, HttpServletResponse.SC_CONFLICT, "Handle already exists.");
                 return;
             }
             user.setPassword(PasswordUtil.hashPassword(user.getPassword()));

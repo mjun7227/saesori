@@ -16,8 +16,7 @@ public class PostDAO {
 
 	/**
 	 * 데이터베이스에 새 게시글을 추가합니다.
-	 * 
-	 * @param post 게시글 정보가 담긴 Post 객체
+	 * * @param post 게시글 정보가 담긴 Post 객체
 	 * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
 	 */
 	public boolean addPost(Post post) {
@@ -50,9 +49,84 @@ public class PostDAO {
 	}
 
 	/**
+	 * 게시글 검색 (content 또는 작성자 nickname 기반, 단순 LIKE 검색)
+	 * @param q 검색어
+	 * @param currentUserId 현재 로그인 사용자 ID (좋아요 상태 포함할 경우 사용)
+	 * @return Post 리스트 (최대 50개)
+	 */
+	public List<Post> searchPosts(String q, int currentUserId) {
+		List<Post> posts = new ArrayList<>();
+		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, u.handle AS handle, "
+			+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, "
+			+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND type = 'REPLY') AS reply_count, "
+			+ "op.id AS op_id, op.user_id AS op_user_id, op.content AS op_content, op.image_url AS op_image_url, op.created_at AS op_created_at, "
+			+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, ou.handle AS op_handle, "
+			+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
+			+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count " // <--- **수정된 부분**
+			+ "FROM posts p "
+			+ "JOIN users u ON p.user_id = u.id "
+			+ "LEFT JOIN posts op ON p.original_post_id = op.id "
+			+ "LEFT JOIN users ou ON op.user_id = ou.id "
+			+ "WHERE p.type != 'REPLY' AND p.content LIKE ? "
+			+ "ORDER BY p.created_at DESC LIMIT 50";
+		Connection conn = null;
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		try {
+			conn = DBUtil.getConnection();
+			stmt = conn.prepareStatement(sql);
+			stmt.setInt(1, currentUserId);
+			stmt.setInt(2, currentUserId);
+			String like = "%" + q + "%";
+			stmt.setString(3, like);
+			rs = stmt.executeQuery();
+			while (rs.next()) {
+				Post post = new Post();
+				post.setId(rs.getInt("id"));
+				post.setUserId(rs.getInt("user_id"));
+				post.setContent(rs.getString("content"));
+				post.setImageUrl(rs.getString("image_url"));
+				post.setCreatedAt(rs.getTimestamp("created_at"));
+				post.setLikeCount(rs.getInt("like_count"));
+				post.setNickname(rs.getString("nickname"));
+				post.setHandle(rs.getString("handle"));
+				post.setLiked(rs.getBoolean("is_liked"));
+				post.setType(rs.getString("type"));
+				post.setOriginalPostId(rs.getInt("original_post_id"));
+				// 원본 게시글 셋업
+				if (("REPOST".equals(post.getType()) || "QUOTE".equals(post.getType())) && post.getOriginalPostId() > 0) {
+					int opId = rs.getInt("op_id");
+					if (opId > 0) {
+						Post originalPost = new Post();
+						originalPost.setId(opId);
+						originalPost.setUserId(rs.getInt("op_user_id"));
+						originalPost.setContent(rs.getString("op_content"));
+						originalPost.setImageUrl(rs.getString("op_image_url"));
+						originalPost.setCreatedAt(rs.getTimestamp("op_created_at"));
+						originalPost.setLikeCount(rs.getInt("op_like_count"));
+						originalPost.setType(rs.getString("op_type"));
+							originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setHandle(rs.getString("op_handle"));
+						originalPost.setLiked(rs.getBoolean("op_is_liked"));
+						originalPost.setReplyCount(rs.getInt("op_reply_count"));
+						post.setOriginalPost(originalPost);
+					}
+				}
+				post.setReplyCount(rs.getInt("reply_count"));
+				posts.add(post);
+			}
+		} catch (SQLException e) {
+			System.err.println("Error searching posts: " + e.getMessage());
+			e.printStackTrace();
+		} finally {
+			DBUtil.close(conn, stmt, rs);
+		}
+		return posts;
+	}
+
+	/**
 	 * 데이터베이스에서 모든 게시글을 조회합니다.
-	 * 
-	 * @return Post 객체 리스트
+	 * * @return Post 객체 리스트
 	 */
 	public List<Post> getAllPosts() {
 		return getAllPosts(0); // 로그인하지 않은 경우
@@ -61,13 +135,13 @@ public class PostDAO {
 	public List<Post> getAllPosts(int currentUserId) {
 		List<Post> posts = new ArrayList<>();
 		// LEFT JOIN으로 원본 게시글 정보도 함께 가져옴 (N+1 문제 해결)
-		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
+		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, u.handle AS handle, "
 				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, "
 				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND type = 'REPLY') AS reply_count, "
 				+ "op.id AS op_id, op.user_id AS op_user_id, op.content AS op_content, op.image_url AS op_image_url, op.created_at AS op_created_at, "
-				+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, "
-				+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
-				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count "
+			+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, ou.handle AS op_handle, "
+			+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
+			+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count " // <--- **수정된 부분**
 				+ "FROM posts p "
 				+ "JOIN users u ON p.user_id = u.id "
 				+ "LEFT JOIN posts op ON p.original_post_id = op.id "
@@ -93,6 +167,7 @@ public class PostDAO {
 				post.setCreatedAt(rs.getTimestamp("created_at"));
 				post.setLikeCount(rs.getInt("like_count"));
 				post.setNickname(rs.getString("nickname"));
+				post.setHandle(rs.getString("handle"));
 				post.setLiked(rs.getBoolean("is_liked"));
 				post.setType(rs.getString("type"));
 				post.setOriginalPostId(rs.getInt("original_post_id"));
@@ -108,7 +183,8 @@ public class PostDAO {
 						originalPost.setCreatedAt(rs.getTimestamp("op_created_at"));
 						originalPost.setLikeCount(rs.getInt("op_like_count"));
 						originalPost.setType(rs.getString("op_type"));
-						originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setHandle(rs.getString("op_handle"));
 						originalPost.setLiked(rs.getBoolean("op_is_liked"));
 						originalPost.setReplyCount(rs.getInt("op_reply_count")); // SQL alias
 						post.setOriginalPost(originalPost);
@@ -129,8 +205,7 @@ public class PostDAO {
 
 	/**
 	 * 특정 사용자가 작성한 게시글을 조회합니다.
-	 * 
-	 * @param userId 사용자 ID
+	 * * @param userId 사용자 ID
 	 * @return 사용자가 작성한 Post 객체 리스트
 	 */
 	public List<Post> getPostsByUserId(int userId) {
@@ -140,13 +215,13 @@ public class PostDAO {
 	public List<Post> getPostsByUserId(int targetUserId, int currentUserId) {
 		List<Post> posts = new ArrayList<>();
 		// LEFT JOIN으로 원본 게시글 정보도 함께 가져옴 (N+1 문제 해결)
-		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
+		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, u.handle AS handle, "
 				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, "
 				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND type = 'REPLY') AS reply_count, "
 				+ "op.id AS op_id, op.user_id AS op_user_id, op.content AS op_content, op.image_url AS op_image_url, op.created_at AS op_created_at, "
-				+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, "
-				+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
-				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count "
+		+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, ou.handle AS op_handle, "
+		+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
+		+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count " // <--- **수정된 부분**
 				+ "FROM posts p "
 				+ "JOIN users u ON p.user_id = u.id "
 				+ "LEFT JOIN posts op ON p.original_post_id = op.id "
@@ -173,6 +248,7 @@ public class PostDAO {
 				post.setCreatedAt(rs.getTimestamp("created_at"));
 				post.setLikeCount(rs.getInt("like_count"));
 				post.setNickname(rs.getString("nickname"));
+				post.setHandle(rs.getString("handle"));
 				post.setLiked(rs.getBoolean("is_liked"));
 				post.setType(rs.getString("type"));
 				post.setOriginalPostId(rs.getInt("original_post_id"));
@@ -189,7 +265,8 @@ public class PostDAO {
 						originalPost.setCreatedAt(rs.getTimestamp("op_created_at"));
 						originalPost.setLikeCount(rs.getInt("op_like_count"));
 						originalPost.setType(rs.getString("op_type"));
-						originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setHandle(rs.getString("op_handle"));
 						originalPost.setLiked(rs.getBoolean("op_is_liked"));
 						originalPost.setReplyCount(rs.getInt("op_reply_count")); // SQL alias
 						post.setOriginalPost(originalPost);
@@ -210,8 +287,7 @@ public class PostDAO {
 
 	/**
 	 * ID로 단일 게시글을 조회합니다.
-	 * 
-	 * @param postId 게시글 ID
+	 * * @param postId 게시글 ID
 	 * @return Post 객체 (존재하지 않으면 null)
 	 */
 	public Post getPostById(int postId) {
@@ -220,19 +296,18 @@ public class PostDAO {
 
 	/**
 	 * ID로 단일 게시글을 조회합니다 (현재 사용자의 좋아요 상태 포함).
-	 * 
-	 * @param postId 게시글 ID
+	 * * @param postId 게시글 ID
 	 * @param currentUserId 현재 로그인한 사용자 ID (0이면 로그인 안 함)
 	 * @return Post 객체 (존재하지 않으면 null)
 	 */
 	public Post getPostById(int postId, int currentUserId) {
 		Post post = null;
-		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
+		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, u.handle AS handle, "
 				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, "
 				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND type = 'REPLY') AS reply_count, "
 				+ "op.id AS op_id, op.user_id AS op_user_id, op.content AS op_content, op.image_url AS op_image_url, op.created_at AS op_created_at, "
-				+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, "
-				+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
+			+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, ou.handle AS op_handle, "
+			+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, " // <--- **수정된 부분**
 				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count "
 				+ "FROM posts p "
 				+ "JOIN users u ON p.user_id = u.id "
@@ -259,6 +334,7 @@ public class PostDAO {
 				post.setCreatedAt(rs.getTimestamp("created_at"));
 				post.setLikeCount(rs.getInt("like_count"));
 				post.setNickname(rs.getString("nickname"));
+				post.setHandle(rs.getString("handle"));
 				post.setLiked(rs.getBoolean("is_liked"));
 				post.setType(rs.getString("type"));
 				post.setOriginalPostId(rs.getInt("original_post_id"));
@@ -276,7 +352,8 @@ public class PostDAO {
 						originalPost.setCreatedAt(rs.getTimestamp("op_created_at"));
 						originalPost.setLikeCount(rs.getInt("op_like_count"));
 						originalPost.setType(rs.getString("op_type"));
-						originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setNickname(rs.getString("op_nickname"));
+							originalPost.setHandle(rs.getString("op_handle"));
 						originalPost.setLiked(rs.getBoolean("op_is_liked"));
 						originalPost.setReplyCount(rs.getInt("op_reply_count")); // SQL alias
 						post.setOriginalPost(originalPost);
@@ -294,8 +371,7 @@ public class PostDAO {
 
 	/**
 	 * 데이터베이스에서 게시글을 삭제합니다.
-	 * 
-	 * @param postId 삭제할 게시글 ID
+	 * * @param postId 삭제할 게시글 ID
 	 * @return 성공적으로 삭제되었으면 true, 그렇지 않으면 false
 	 */
 	public boolean deletePost(int postId, int userId) {
@@ -332,8 +408,7 @@ public class PostDAO {
 	/**
 	 * 원본 게시글이 삭제될 때 해당 게시글의 리포스트만 삭제합니다.
 	 * 인용 게시글은 유지됩니다.
-	 * 
-	 * @param originalPostId 원본 게시글 ID
+	 * * @param originalPostId 원본 게시글 ID
 	 */
 	public void deleteRepostsByOriginalId(int originalPostId) {
 		String sql = "DELETE FROM posts WHERE original_post_id = ? AND type = 'REPOST'";
@@ -357,8 +432,7 @@ public class PostDAO {
 
 	/**
 	 * 사용자가 특정 게시글을 이미 리포스트했는지 확인합니다.
-	 * 
-	 * @param userId 사용자 ID
+	 * * @param userId 사용자 ID
 	 * @param originalPostId 원본 게시글 ID
 	 * @return 이미 리포스트했으면 true, 그렇지 않으면 false
 	 */
@@ -387,8 +461,7 @@ public class PostDAO {
 
 	/**
 	 * 데이터베이스에 새 재게시글을 추가합니다.
-	 * 
-	 * @param post 재게시글 정보가 담긴 Post 객체
+	 * * @param post 재게시글 정보가 담긴 Post 객체
 	 * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
 	 */
 	public boolean rePost(Post post) {
@@ -422,8 +495,7 @@ public class PostDAO {
 
 	/**
 	 * 데이터베이스에 새 인용 게시글을 추가합니다.
-	 * 
-	 * @param post 게시글 정보가 담긴 Post 객체
+	 * * @param post 게시글 정보가 담긴 Post 객체
 	 * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
 	 */
 	public boolean addQuote(Post post) {
@@ -458,8 +530,7 @@ public class PostDAO {
 
 	/**
 	 * 특정 게시글에 좋아요를 누른 사용자 목록을 조회합니다.
-	 * 
-	 * @param postId 게시글 ID
+	 * * @param postId 게시글 ID
 	 * @return 좋아요를 누른 User 객체 리스트
 	 */
 	public List<User> getLikedUsers(int postId) {
@@ -493,8 +564,7 @@ public class PostDAO {
 
 	/**
 	 * 특정 게시글을 리트윗한 사용자 목록을 조회합니다.
-	 * 
-	 * @param postId 게시글 ID
+	 * * @param postId 게시글 ID
 	 * @return 리트윗한 User 객체 리스트
 	 */
 	public List<User> getRepostedUsers(int postId) {
@@ -529,8 +599,7 @@ public class PostDAO {
 
 	/**
 	 * 데이터베이스에 답글을 추가합니다.
-	 * 
-	 * @param post 답글 정보가 담긴 Post 객체
+	 * * @param post 답글 정보가 담긴 Post 객체
 	 * @return 성공여부
 	 */
 	public boolean addReply(Post post) {
@@ -566,20 +635,19 @@ public class PostDAO {
 
 	/**
 	 * 특정 게시글에 달린 답글 목록을 조회합니다.
-	 * 
-	 * @param postId 게시글 ID
+	 * * @param postId 게시글 ID
 	 * @param currentUserId 현재 로그인한 사용자 ID
 	 * @return 답글 List
 	 */
 	public List<Post> getReplies(int postId, int currentUserId) {
 		List<Post> posts = new ArrayList<>();
-		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
+		String sql = "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, u.handle AS handle, "
 				+ "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, "
 				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND type = 'REPLY') AS reply_count, "
 				+ "op.id AS op_id, op.user_id AS op_user_id, op.content AS op_content, op.image_url AS op_image_url, op.created_at AS op_created_at, "
-				+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, "
+				+ "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, ou.handle AS op_handle, "
 				+ "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
-				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count "
+				+ "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count " // <--- **수정된 부분**
 				+ "FROM posts p "
 				+ "JOIN users u ON p.user_id = u.id "
 				+ "LEFT JOIN posts op ON p.original_post_id = op.id "
@@ -607,6 +675,7 @@ public class PostDAO {
 				post.setCreatedAt(rs.getTimestamp("created_at"));
 				post.setLikeCount(rs.getInt("like_count"));
 				post.setNickname(rs.getString("nickname"));
+				post.setHandle(rs.getString("handle"));
 				post.setLiked(rs.getBoolean("is_liked"));
 				post.setType(rs.getString("type"));
 				post.setOriginalPostId(rs.getInt("original_post_id")); // should be the original post we requested replues for
@@ -641,8 +710,7 @@ public class PostDAO {
 
     /**
      * 재귀 쿼리(CTE)를 사용하여 특정 게시글의 모든 상위 게시글(스레드)을 조회합니다.
-     * 
-     * @param postId 조회할 게시글 ID
+     * * @param postId 조회할 게시글 ID
      * @param currentUserId 현재 사용자 ID
      * @return 상위 게시글 리스트 (최상위 -> 하위 순서)
      */
@@ -694,6 +762,7 @@ public class PostDAO {
                 post.setCreatedAt(rs.getTimestamp("created_at"));
                 post.setLikeCount(rs.getInt("like_count"));
                 post.setNickname(rs.getString("nickname"));
+                post.setHandle(rs.getString("handle"));
                 post.setLiked(rs.getBoolean("is_liked"));
                 post.setType(rs.getString("type"));
                 post.setOriginalPostId(rs.getInt("original_post_id"));
@@ -729,8 +798,7 @@ public class PostDAO {
 
     /**
      * 재귀 쿼리(CTE)를 사용하여 특정 게시글의 모든 하위 게시글(답글)을 조회합니다.
-     * 
-     * @param postId 부모 게시글 ID
+     * * @param postId 부모 게시글 ID
      * @param currentUserId 현재 사용자 ID
      * @return 하위 게시글 리스트 (답글의 답글 포함)
      */
@@ -744,14 +812,14 @@ public class PostDAO {
                 + "  INNER JOIN descendant_posts dp ON p.original_post_id = dp.id "
                 + "  WHERE p.type = 'REPLY' "
                 + ") "
-                + "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, "
-                + "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, "
+                + "SELECT p.id, p.user_id, p.content, p.image_url, p.created_at, p.like_count, p.type, p.original_post_id, u.nickname, u.handle AS handle, "
+                + "(SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = ?) > 0 AS is_liked, " // <--- **수정된 부분 A**
                 + "(SELECT COUNT(*) FROM posts WHERE original_post_id = p.id AND type = 'REPLY') AS reply_count, "
                 + "op.id AS op_id, op.user_id AS op_user_id, op.content AS op_content, op.image_url AS op_image_url, op.created_at AS op_created_at, "
-                + "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, "
+                + "op.like_count AS op_like_count, op.type AS op_type, ou.nickname AS op_nickname, ou.handle AS op_handle, "
                 + "(SELECT COUNT(*) FROM likes WHERE post_id = op.id AND user_id = ?) > 0 AS op_is_liked, "
                 + "(SELECT COUNT(*) FROM posts WHERE original_post_id = op.id AND type = 'REPLY') AS op_reply_count, "
-                + "dp.depth "
+                + "dp.depth " // <--- **수정된 부분 B**
                 + "FROM posts p "
                 + "JOIN descendant_posts dp ON p.id = dp.id "
                 + "JOIN users u ON p.user_id = u.id "
@@ -779,6 +847,7 @@ public class PostDAO {
                 post.setCreatedAt(rs.getTimestamp("created_at"));
                 post.setLikeCount(rs.getInt("like_count"));
                 post.setNickname(rs.getString("nickname"));
+                post.setHandle(rs.getString("handle"));
                 post.setLiked(rs.getBoolean("is_liked"));
                 post.setType(rs.getString("type"));
                 post.setOriginalPostId(rs.getInt("original_post_id"));
@@ -814,8 +883,7 @@ public class PostDAO {
 
     /**
      * 특정 사용자가 팔로우하는 사용자들의 게시글과 자기 자신의 게시글을 조회합니다 (팔로우 타임라인).
-     * 
-     * @param userId 팔로우 타임라인을 조회할 사용자 ID
+     * * @param userId 팔로우 타임라인을 조회할 사용자 ID
      * @param currentUserId 현재 로그인한 사용자 ID (좋아요 상태 확인용, 0이면 로그인 안 함)
      * @return 팔로우한 사용자들과 자기 자신의 Post 객체 리스트
      */

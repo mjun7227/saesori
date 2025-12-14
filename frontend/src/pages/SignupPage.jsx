@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function SignupPage() {
-    const [formData, setFormData] = useState({ username: '', password: '', nickname: '' });
+    const [formData, setFormData] = useState({ handle: '', password: '', nickname: '' });
     const [error, setError] = useState('');
     const { register } = useAuth();
     const navigate = useNavigate();
@@ -11,14 +11,14 @@ export default function SignupPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        const result = await register(formData.username, formData.password, formData.nickname);
+        const result = await register(formData.handle, formData.password, formData.nickname);
         if (result.success) {
             alert('회원가입이 완료되었습니다! 로그인해주세요.');
             navigate('/login');
         } else {
             setError(result.message);
         }
-    };
+    }; 
 
     return (
         <div className="flex flex-col items-center justify-center py-12">
@@ -38,12 +38,12 @@ export default function SignupPage() {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">아이디</label>
+                        <label className="block text-sm font-medium mb-1">핸들(Handle)</label>
                         <input
                             type="text"
                             className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:border-saesori-green focus:ring-1 focus:ring-saesori-green outline-none transition-all"
-                            value={formData.username}
-                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            value={formData.handle}
+                            onChange={(e) => setFormData({ ...formData, handle: e.target.value })}
                             required
                         />
                     </div>

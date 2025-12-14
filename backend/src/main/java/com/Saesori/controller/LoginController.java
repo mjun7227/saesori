@@ -36,7 +36,7 @@ public class LoginController extends HttpServlet {
 
         try {
             User loginAttempt = objectMapper.readValue(request.getReader(), User.class);
-            User storedUser = userDAO.getUserByUsername(loginAttempt.getUsername());
+            User storedUser = userDAO.getUserByHandle(loginAttempt.getHandle());
 
             if (storedUser != null && PasswordUtil.checkPassword(loginAttempt.getPassword(), storedUser.getPassword())) {
                 storedUser.setPassword(null); // 비밀번호 해시는 전송하지 않음
@@ -47,7 +47,7 @@ public class LoginController extends HttpServlet {
                 
                 objectMapper.writeValue(response.getWriter(), storedUser);
             } else {
-                sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid username or password.");
+                sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Invalid handle or password.");
             }
         } catch (IOException e) {
             sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid login data.");

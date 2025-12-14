@@ -2,10 +2,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import iconImage from '../assets/icon.png';
 import TreeDecoration from './TreeDecoration';
+import { useState } from 'react';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const [q, setQ] = useState('');
 
     const handleLogout = () => {
         logout();
@@ -24,6 +26,24 @@ export default function Navbar() {
             </div>
 
             {/* Navigation Links */}
+            <form
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    if (q.trim()) {
+                        navigate(`/search?q=${encodeURIComponent(q.trim())}`);
+                        setQ('');
+                    }
+                }}
+                className="mb-6"
+            >
+                <input
+                    type="text"
+                    placeholder="검색"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    className="w-full p-2 rounded-lg border border-saesori-green/20 text-sm focus:outline-none"
+                />
+            </form>
             <div className="flex flex-col gap-8 font-display font-bold text-lg tracking-wide uppercase flex-1 pb-48">
                 <Link to="/" className="hover:text-saesori-green transition-colors">
                     MAIN

@@ -83,7 +83,7 @@ export default function PostCard({ post, currentUser, onDelete, onRepost, onQuot
                                 <Link to={`/profile/${originalPost.userId}`} className="font-bold text-gray-800 text-lg hover:underline leading-none">
                                     {originalPost.nickname || `User ${originalPost.userId}`}
                                 </Link>
-                                <span className="text-sm text-gray-400 font-normal">@{originalPost.nickname}</span>
+                                <span className="text-sm text-gray-400 font-normal">@{originalPost.handle}</span>
                                 <span className="text-xs text-gray-300 ml-auto">
                                     {new Date(originalPost.createdAt).toLocaleDateString()}
                                 </span>
@@ -187,7 +187,7 @@ export default function PostCard({ post, currentUser, onDelete, onRepost, onQuot
                             <Link to={`/profile/${post.userId}`} className="font-bold text-gray-800 text-lg hover:underline truncate">
                                 {post.nickname || `User ${post.userId}`}
                             </Link>
-                            <span className="text-sm text-gray-400 font-normal shrink-0">@{post.nickname}</span>
+                            <span className="text-sm text-gray-400 font-normal shrink-0">@{post.handle}</span>
                             {post.type === 'QUOTE' && (
                                 <span className="text-xs text-blue-400 font-medium bg-blue-50 px-2 py-0.5 rounded">인용</span>
                             )}

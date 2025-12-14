@@ -5,7 +5,7 @@ import java.sql.Timestamp; // 데이터베이스 DATETIME 호환성을 위해 ja
 
 public class User {
     private int id;
-    private String username;
+    private String handle;
     private String password; // 해시된 비밀번호
     private String nickname;
     private Timestamp createdAt;
@@ -16,9 +16,9 @@ public class User {
     public User() {
     }
 
-    public User(int id, String username, String password, String nickname, Timestamp createdAt) {
+    public User(int id, String handle, String password, String nickname, Timestamp createdAt) {
         this.id = id;
-        this.username = username;
+        this.handle = handle;
         this.password = password;
         this.nickname = nickname;
         this.createdAt = createdAt;
@@ -33,12 +33,12 @@ public class User {
         this.id = id;
     }
 
-    public String getUsername() {
-        return username;
+    public String getHandle() {
+        return handle;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setHandle(String handle) {
+        this.handle = handle;
     }
 
     public String getPassword() {
@@ -92,7 +92,7 @@ public class User {
     public String toString() {
         return "User{" +
                "id=" + id +
-               ", username='" + username + "'" +
+               ", handle='" + handle + "'" +
                ", password='[PROTECTED]'" +
                 ", nickname='" + nickname + "'" +
                 ", createdAt=" + createdAt +

@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useContext, useRef } from 'react';
+import { createContext, useState, useContext, useRef, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -12,7 +12,7 @@ export const PostProvider = ({ children }) => {
 
     const fetchControllerRef = useRef(null);
 
-    const fetchPosts = async (tab = 'GLOBAL') => {
+    const fetchPosts = useCallback(async (tab = 'GLOBAL') => {
         // cancel previous fetch if running
         if (fetchControllerRef.current) {
             try {
@@ -62,7 +62,23 @@ export const PostProvider = ({ children }) => {
             fetchControllerRef.current = null;
             return [];
         }
-    };
+    }, [user]);
+
+    const searchPosts = useCallback(async (q) => {
+        if (!q || q.trim() === '') return [];
+        setLoading(true);
+        try {
+            const res = await api.search({ type: 'post', q });
+            const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setPosts(sorted);
+            setLoading(false);
+            return sorted;
+        } catch (error) {
+            console.error('searchPosts failed', error);
+            setLoading(false);
+            return [];
+        }
+    }, []);
 
     const fetchPostById = async (id) => {
         try {
@@ -183,6 +199,7 @@ export const PostProvider = ({ children }) => {
             posts,
             loading,
             fetchPosts,
+            searchPosts,
             fetchPostById,
             createPost,
             repost,

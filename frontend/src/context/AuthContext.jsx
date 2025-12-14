@@ -15,9 +15,9 @@ export const AuthProvider = ({ children }) => {
         });
         const loading = false;
 
-    const login = async (username, password) => {
+    const login = async (handle, password) => {
         // try {
-        //   const response = await api.post('/users/login', { username, password });
+        //   const response = await api.post('/users/login', { handle, password });
         //   setUser(response.data);
         //   localStorage.setItem('saesori_user', JSON.stringify(response.data));
         //   return { success: true };
@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
 
         // Using real API call
         try {
-            const response = await api.post('/users/login', { username, password });
+            const response = await api.post('/users/login', { handle, password });
             const userData = response.data;
             setUser(userData);
             localStorage.setItem('saesori_user', JSON.stringify(userData));
@@ -38,22 +38,35 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (username, password, nickname) => {
+    const register = async (handle, password, nickname) => {
         try {
-            await api.post('/users/register', { username, password, nickname });
+            await api.post('/users/register', { handle, password, nickname });
             return { success: true }; // Require login after register
         } catch (error) {
             return { success: false, message: error.response?.data?.error || 'Registration failed' };
         }
-    };
+    }; 
 
     const logout = () => {
         setUser(null);
         localStorage.removeItem('saesori_user');
     };
 
+    const updateUser = async (id, data) => {
+        try {
+            await api.put(`/users/${id}`, data);
+            const refreshed = (await api.get(`/users/${id}`)).data;
+            setUser(refreshed);
+            localStorage.setItem('saesori_user', JSON.stringify(refreshed));
+            return true;
+        } catch (error) {
+            console.error('Update user error', error);
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, register, logout, updateUser, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );

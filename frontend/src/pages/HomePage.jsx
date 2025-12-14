@@ -19,6 +19,15 @@ export default function HomePage() {
     const [selectedPostForReply, setSelectedPostForReply] = useState(null);
     const [activeTab, setActiveTab] = useState('GLOBAL');
 
+    // prevent duplicate fetch on initial mount (React StrictMode double-invoke in dev)
+    // use a small time window dedupe to avoid cancelling the first valid request
+    // while still allowing real subsequent tab/user changes to trigger fetches
+    const dedupeWindowMs = 100; // ms
+    // module-scoped last fetch timestamp (keeps value across StrictMode remounts)
+    if (typeof window !== 'undefined' && !window.__saesori_last_home_fetch) {
+        window.__saesori_last_home_fetch = 0;
+    }
+
     // 이미지 업로드를 위한 상태
     const [image, setImage] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -27,7 +36,14 @@ export default function HomePage() {
     // posts and loading provided by PostContext
 
     useEffect(() => {
-        // fetch posts according to active tab
+        // fetch posts according to active tab;
+        // Avoid duplicate call from React StrictMode (dev) by ignoring calls within a small window.
+        const now = Date.now();
+        const last = (typeof window !== 'undefined') ? window.__saesori_last_home_fetch : 0;
+        if (now - last < dedupeWindowMs) {
+            return;
+        }
+        if (typeof window !== 'undefined') window.__saesori_last_home_fetch = now;
         fetchPosts(activeTab);
     }, [activeTab, user, fetchPosts]);
 

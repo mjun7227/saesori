@@ -6,6 +6,7 @@ import SignupPage from './pages/SignupPage';
 import BirdCollectionPage from './pages/BirdCollectionPage';
 import ProfilePage from './pages/ProfilePage';
 import PostDetailPage from './pages/PostDetailPage';
+import SearchPage from './pages/SearchPage';
 import { AuthProvider } from './context/AuthContext';
 import { PostProvider } from './context/PostContext';
 
@@ -19,6 +20,7 @@ function App() {
           <Route path="/post/:postId" element={<PostDetailPage />} />
           <Route path="/collection" element={<BirdCollectionPage />} />
           <Route path="/profile/:userId" element={<ProfilePage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Route>

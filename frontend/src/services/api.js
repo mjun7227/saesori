@@ -8,4 +8,9 @@ const api = axios.create({
     withCredentials: true, // CORS 및 세션 쿠키 전송을 위해 필수
 });
 
+// helper for search endpoint
+api.search = ({ type, q }) => {
+    return api.get('/search', { params: { type, q } });
+};
+
 export default api;

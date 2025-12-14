@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginPage() {
-    const [formData, setFormData] = useState({ username: '', password: '' });
+    const [formData, setFormData] = useState({ handle: '', password: '' });
     const [error, setError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -11,13 +11,13 @@ export default function LoginPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        const result = await login(formData.username, formData.password);
+        const result = await login(formData.handle, formData.password);
         if (result.success) {
             navigate('/');
         } else {
             setError(result.message);
         }
-    };
+    }; 
 
     return (
         <div className="flex flex-col items-center justify-center py-12">
@@ -27,12 +27,12 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">아이디</label>
+                        <label className="block text-sm font-medium mb-1">핸들(Handle)</label>
                         <input
                             type="text"
                             className="w-full p-3 bg-gray-50 rounded-lg border border-gray-200 focus:border-saesori-green focus:ring-1 focus:ring-saesori-green outline-none transition-all"
-                            value={formData.username}
-                            onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                            value={formData.handle}
+                            onChange={(e) => setFormData({ ...formData, handle: e.target.value })}
                             required
                         />
                     </div>

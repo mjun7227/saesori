@@ -8,6 +8,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp; // Make sure to import java.sql.Timestamp
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDAO {
 
@@ -18,13 +20,13 @@ public class UserDAO {
      * @return 성공적으로 추가되었으면 true, 그렇지 않으면 false
      */
     public boolean addUser(User user) {
-        String sql = "INSERT INTO users (username, password, nickname) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO users (handle, password, nickname) VALUES (?, ?, ?)";
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
             conn = DBUtil.getConnection();
             stmt = conn.prepareStatement(sql);
-            stmt.setString(1, user.getUsername());
+            stmt.setString(1, user.getHandle());
             stmt.setString(2, user.getPassword()); // Hashed password
             stmt.setString(3, user.getNickname());
 
@@ -40,35 +42,35 @@ public class UserDAO {
     }
 
     /**
-     * 사용자명으로 사용자를 조회합니다.
-     * @param username 검색할 사용자명
+     * handle로 사용자를 조회합니다.
+     * @param handle 검색할 handle
      * @return User 객체 (존재하지 않으면 null)
      */
-    public User getUserByUsername(String username) {
-        String sql = "SELECT id, username, password, nickname, created_at, follower_count, following_count FROM users WHERE username = ?";
+    public User getUserByHandle(String handle) {
+        String sql = "SELECT id, handle, password, nickname, created_at, follower_count, following_count, posts_count FROM users WHERE handle = ?";
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
             conn = DBUtil.getConnection();
             stmt = conn.prepareStatement(sql);
-            stmt.setString(1, username);
+            stmt.setString(1, handle);
             rs = stmt.executeQuery();
 
             if (rs.next()) {
                 User user = new User();
                 user.setId(rs.getInt("id"));
-                user.setUsername(rs.getString("username"));
+                user.setHandle(rs.getString("handle"));
                 user.setPassword(rs.getString("password"));
                 user.setNickname(rs.getString("nickname"));
                 user.setCreatedAt(rs.getTimestamp("created_at"));
                 user.setFollowerCount(rs.getInt("follower_count"));
                 user.setFollowingCount(rs.getInt("following_count"));
-                user.setPostsCount(rs.getInt("following_count"));
+                user.setPostsCount(rs.getInt("posts_count"));
                 return user;
             }
         } catch (SQLException e) {
-            System.err.println("Error getting user by username: " + e.getMessage());
+            System.err.println("Error getting user by handle: " + e.getMessage());
             e.printStackTrace();
         } finally {
             DBUtil.close(conn, stmt, rs);
@@ -82,7 +84,7 @@ public class UserDAO {
      * @return User 객체 (존재하지 않으면 null)
      */
     public User getUserById(int id) {
-        String sql = "SELECT id, username, password, nickname, created_at, follower_count, following_count FROM users WHERE id = ?";
+        String sql = "SELECT id, handle, password, nickname, created_at, follower_count, following_count, posts_count FROM users WHERE id = ?";
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -95,13 +97,13 @@ public class UserDAO {
             if (rs.next()) {
                 User user = new User();
                 user.setId(rs.getInt("id"));
-                user.setUsername(rs.getString("username"));
+                user.setHandle(rs.getString("handle"));
                 user.setPassword(rs.getString("password"));
                 user.setNickname(rs.getString("nickname"));
                 user.setCreatedAt(rs.getTimestamp("created_at"));
                 user.setFollowerCount(rs.getInt("follower_count"));
                 user.setFollowingCount(rs.getInt("following_count"));
-                user.setPostsCount(rs.getInt("following_count"));
+                user.setPostsCount(rs.getInt("posts_count"));
                 return user;
             }
         } catch (SQLException e) {
@@ -119,13 +121,13 @@ public class UserDAO {
      * @return 성공적으로 업데이트되었으면 true, 그렇지 않으면 false
      */
     public boolean updateUser(User user) {
-        String sql = "UPDATE users SET username = ?, nickname = ? WHERE id = ?";
+        String sql = "UPDATE users SET handle = ?, nickname = ? WHERE id = ?";
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
             conn = DBUtil.getConnection();
             stmt = conn.prepareStatement(sql);
-            stmt.setString(1, user.getUsername());
+            stmt.setString(1, user.getHandle());
             stmt.setString(2, user.getNickname());
             stmt.setInt(3, user.getId());
 
@@ -163,5 +165,43 @@ public class UserDAO {
         } finally {
             DBUtil.close(conn, stmt);
         }
+    }
+
+    /**
+     * 사용자 검색 (handle 또는 nickname 기반, 단순 LIKE 검색)
+     * @param q 검색어
+     * @return User 리스트 (최대 50개)
+     */
+    public List<User> searchUsers(String q) {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT id, handle, nickname, created_at, follower_count, following_count, posts_count FROM users WHERE handle LIKE ? OR nickname LIKE ? ORDER BY created_at DESC LIMIT 50";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            stmt = conn.prepareStatement(sql);
+            String like = "%" + q + "%";
+            stmt.setString(1, like);
+            stmt.setString(2, like);
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                User user = new User();
+                user.setId(rs.getInt("id"));
+                user.setHandle(rs.getString("handle"));
+                user.setNickname(rs.getString("nickname"));
+                user.setCreatedAt(rs.getTimestamp("created_at"));
+                user.setFollowerCount(rs.getInt("follower_count"));
+                user.setFollowingCount(rs.getInt("following_count"));
+                user.setPostsCount(rs.getInt("posts_count"));
+                users.add(user);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error searching users: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.close(conn, stmt, rs);
+        }
+        return users;
     }
 }

@@ -67,7 +67,7 @@ export default function TreeDecoration({ position = 'left' }) {
                         <img 
                             src={treeImage} 
                             alt="" 
-                            className="absolute opacity-50 transform scale-x-[-1]" 
+                            className="absolute opacity-45 transform scale-x-[-1]" 
                             style={{ 
                                 height: '80%', 
                                 right: '70%',
