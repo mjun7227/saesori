@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS posts (
     like_count INT DEFAULT 0 NOT NULL,
     type VARCHAR(20) DEFAULT 'ORIGINAL',
     original_post_id INT DEFAULT NULL,
+    image_url VARCHAR(255) DEFAULT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

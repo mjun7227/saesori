@@ -29,6 +29,7 @@ export default function DataFetcher() {
                     return;
                 }
                 // ... 실제 에러 처리 ...
+                setError(error.message || '요청 실패');
             }
         };
 

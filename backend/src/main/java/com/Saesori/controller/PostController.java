@@ -54,6 +54,21 @@ public class PostController extends HttpServlet {
 
             String[] pathParts = pathInfo.split("/");
 
+            // /api/posts/following - 팔로우 타임라인 조회
+            if (pathParts.length == 2 && pathParts[1].equals("following")) {
+                if (user == null) {
+                    sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다.");
+                    return;
+                }
+                try {
+                    List<Post> posts = postDAO.getFollowingTimeline(user.getId(), currentUserId);
+                    objectMapper.writeValue(response.getWriter(), posts);
+                } catch (Exception e) {
+                    sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "팔로우 타임라인 조회에 실패했습니다.");
+                }
+                return;
+            }
+
             // /api/posts/user/{userId} - 특정 사용자 게시글 조회
             if (pathParts.length == 3 && pathParts[1].equals("user")) {
                 try {
@@ -63,7 +78,64 @@ public class PostController extends HttpServlet {
                 } catch (NumberFormatException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid user ID format.");
                 }
-            } else {
+            }
+            // /api/posts/{postId}/likes - 좋아요 누른 사용자 목록 조회
+            else if (pathParts.length == 3 && pathParts[2].equals("likes")) {
+                try {
+                    int postId = Integer.parseInt(pathParts[1]);
+                    List<User> users = postDAO.getLikedUsers(postId);
+                    objectMapper.writeValue(response.getWriter(), users);
+                } catch (NumberFormatException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID format.");
+                }
+            }
+            // /api/posts/{postId}/reposts - 리트윗한 사용자 목록 조회
+            else if (pathParts.length == 3 && pathParts[2].equals("reposts")) {
+                try {
+                    int postId = Integer.parseInt(pathParts[1]);
+                    List<User> users = postDAO.getRepostedUsers(postId);
+                    objectMapper.writeValue(response.getWriter(), users);
+                } catch (NumberFormatException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID format.");
+                }
+            }
+            // /api/posts/{postId}/replies - 답글 목록 조회
+            else if (pathParts.length == 3 && pathParts[2].equals("replies")) {
+                try {
+                    int postId = Integer.parseInt(pathParts[1]);
+                    // 답글 조회 시 현재 사용자의 좋아요 상태도 확인할 수 있어야 하므로 currentUserId 전달
+                    // 재귀적으로 모든 하위 답글(descendants)을 조회하도록 변경
+                    List<Post> replies = postDAO.getDescendants(postId, currentUserId);
+                    objectMapper.writeValue(response.getWriter(), replies);
+                } catch (NumberFormatException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID format.");
+                }
+            }
+            // /api/posts/{postId} - 단일 게시글 조회
+            else if (pathParts.length == 2) {
+                try {
+                    int postId = Integer.parseInt(pathParts[1]);
+                    Post post = postDAO.getPostById(postId, currentUserId);
+                    if (post == null) {
+                        sendError(response, HttpServletResponse.SC_NOT_FOUND, "게시글을 찾을 수 없습니다.");
+                        return;
+                    }
+                    objectMapper.writeValue(response.getWriter(), post);
+                } catch (NumberFormatException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID format.");
+                }
+            }
+            // /api/posts/{postId}/ancestors - 상위 스레드 조회
+            else if (pathParts.length == 3 && pathParts[2].equals("ancestors")) {
+                try {
+                    int postId = Integer.parseInt(pathParts[1]);
+                    List<Post> ancestors = postDAO.getAncestors(postId, currentUserId);
+                    objectMapper.writeValue(response.getWriter(), ancestors);
+                } catch (NumberFormatException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post ID format.");
+                }
+            }
+            else {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid post endpoint.");
             }
         } catch (Exception e) {
@@ -113,7 +185,7 @@ public class PostController extends HttpServlet {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
                 }
             } 
-            // 알티
+            // 리트윗
             else if (pathInfo.endsWith("/repost")) {
             	try {
                     // 세션 확인
@@ -133,9 +205,31 @@ public class PostController extends HttpServlet {
                     	sendError(response, HttpServletResponse.SC_BAD_REQUEST, "재게시는 내용을 포함할 수 없습니다.");
                     	return;
                     }
+                    
+                    // 원본 게시글 확인
+                    Post originalPost = postDAO.getPostById(post.getOriginalPostId());
+                    if (originalPost == null) {
+                        sendError(response, HttpServletResponse.SC_NOT_FOUND, "원본 게시글을 찾을 수 없습니다.");
+                        return;
+                    }
+                    
+                    // 리포스트의 리포스트인 경우, 원본 게시글 ID를 사용
+                    int targetOriginalId = post.getOriginalPostId();
+                    if ("REPOST".equals(originalPost.getType()) && originalPost.getOriginalPostId() > 0) {
+                        targetOriginalId = originalPost.getOriginalPostId();
+                    }
+                    
+                    // 중복 리포스트 체크
+                    if (postDAO.hasUserReposted(user.getId(), targetOriginalId)) {
+                        sendError(response, HttpServletResponse.SC_CONFLICT, "이미 리트윗한 게시글입니다.");
+                        return;
+                    }
+                    
                     // 세션에서 사용자 ID 설정
                     post.setUserId(user.getId());
                     post.setType("REPOST");
+                    post.setOriginalPostId(targetOriginalId);
+                    
                     if (postDAO.rePost(post)) {
                         // BirdService를 통해 로직 수행
                         birdService.checkAndAwardBirds(post.getUserId(), "post_count");
@@ -178,6 +272,46 @@ public class PostController extends HttpServlet {
                     }
                 } catch (IOException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 게시글 데이터입니다.");
+                }
+            }
+            // 답글
+            else if (pathInfo.endsWith("/reply")) {
+                try {
+                    // 세션 확인
+                    jakarta.servlet.http.HttpSession session = request.getSession(false);
+                    com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user")
+                            : null;
+
+                    if (user == null) {
+                        sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "로그인이 필요합니다.");
+                        return;
+                    }
+
+                    Post post = objectMapper.readValue(request.getReader(), Post.class);
+                    
+                    if (post.getContent() == null || post.getContent().trim().isEmpty()) {
+                        sendError(response, HttpServletResponse.SC_BAD_REQUEST, "답글 내용을 입력해주세요.");
+                        return;
+                    }
+                    
+                    if (post.getOriginalPostId() <= 0) {
+                         sendError(response, HttpServletResponse.SC_BAD_REQUEST, "원본 게시글 ID가 필요합니다.");
+                         return;
+                    }
+                    
+                    // 세션에서 사용자 ID 설정
+                    post.setUserId(user.getId());
+                    post.setType("REPLY");
+                    
+                    if (postDAO.addReply(post)) {
+                        // BirdService 로직 (답글도 활동으로 인정한다면)
+                        birdService.checkAndAwardBirds(post.getUserId(), "post_count");
+                        sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "답글이 성공적으로 작성되었습니다.");
+                    } else {
+                        sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "답글 작성에 실패했습니다.");
+                    }
+                } catch (IOException e) {
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 요청 데이터입니다.");
                 }
             }
             else {

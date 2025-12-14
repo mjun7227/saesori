@@ -1,6 +1,7 @@
 package com.Saesori.dto;
 
 import java.sql.Timestamp;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class Post {
     private int id;
@@ -9,10 +10,12 @@ public class Post {
     private Timestamp createdAt;
     private String nickname; // 화면 표시용 임시 필드
     private int likeCount;
-    private String type;
+    private String type; // ORIGINAL, REPOST, QUOTE, REPLY
     private int originalPostId;
     private boolean isLiked;
-    private Post originalPost;
+    private Post originalPost; // 리포스트/인용/답글 대상 원본 글
+    private int replyCount;
+    private String imageUrl; // 이미지 URL
 
     public Post() {
     }
@@ -75,6 +78,7 @@ public class Post {
         this.likeCount = likeCount;
     }
 
+    @JsonProperty("isLiked")
     public boolean isLiked() {
         return isLiked;
     }
@@ -106,6 +110,23 @@ public class Post {
 
 	public void setOriginalPost(Post originalPost) {
 		this.originalPost = originalPost;
+	}
+
+    public int getReplyCount() {
+        return replyCount;
+    }
+
+    public void setReplyCount(int replyCount) {
+        this.replyCount = replyCount;
+    }
+    
+    
+	public String getImageUrl() {
+		return imageUrl;
+	}
+
+	public void setImageUrl(String imageUrl) {
+		this.imageUrl = imageUrl;
 	}
 
 	@Override

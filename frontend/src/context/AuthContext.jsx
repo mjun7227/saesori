@@ -1,20 +1,19 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useContext } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        // Check if user is logged in (e.g. from localStorage)
-        const storedUser = localStorage.getItem('saesori_user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-        setLoading(false);
-    }, []);
+    const [user, setUser] = useState(() => {
+        try {
+            const stored = localStorage.getItem('saesori_user');
+            return stored ? JSON.parse(stored) : null;
+        } catch {
+                return null;
+            }
+        });
+        const loading = false;
 
     const login = async (username, password) => {
         // try {
