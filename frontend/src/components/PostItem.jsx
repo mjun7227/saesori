@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
+// 백엔드 서버 주소
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
+// 이미지 URL을 전체 경로로 변환하는 헬퍼 함수
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url; // 이미 전체 URL인 경우
+    return `${BACKEND_URL}${url}`; // 상대 경로인 경우 백엔드 URL 추가
+};
 export default function PostItem({ post, currentUser, onDelete }) {
     const [liked, setLiked] = useState(post.liked);
     const [likeCount, setLikeCount] = useState(post.likeCount || 0);
@@ -38,8 +47,12 @@ export default function PostItem({ post, currentUser, onDelete }) {
         <div className="py-6 border-b border-saesori-green/20 hover:bg-white/30 transition-colors -mx-4 px-4">
             <div className="flex gap-4">
                 <Link to={`/profile/${post.userId}`} className="shrink-0">
-                    <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-saesori-green-dark text-lg">
-                        {post.nickname ? post.nickname.charAt(0).toUpperCase() : 'U'}
+                    <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-saesori-green-dark text-lg overflow-hidden">
+                        {post.profileImageUrl ? (
+                            <img src={getImageUrl(post.profileImageUrl)} alt={post.nickname} className="w-full h-full object-cover" />
+                        ) : (
+                            post.nickname ? post.nickname.charAt(0).toUpperCase() : 'U'
+                        )}
                     </div>
                 </Link>
                 <div className="flex-1 min-w-0">

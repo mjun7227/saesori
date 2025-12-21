@@ -1,6 +1,16 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
+// 백엔드 서버 주소
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
+// 이미지 URL을 전체 경로로 변환하는 헬퍼 함수
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url; // 이미 전체 URL인 경우
+    return `${BACKEND_URL}${url}`; // 상대 경로인 경우 백엔드 URL 추가
+};
+
 // 1. 하단 액션 버튼 그룹 분리
 const PostActions = ({ post, onLike, onReply, onRepost, onQuote, currentUser, showActions }) => {
     if (!showActions || !currentUser) return null;
@@ -64,7 +74,7 @@ const Avatar = ({ userId, nickname, profileImageUrl }) => (
     <Link to={`/profile/${userId}`} className="shrink-0" onClick={(e) => e.stopPropagation()}>
         <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-saesori-green-dark text-lg overflow-hidden border border-saesori-green/10 shadow-sm">
             {profileImageUrl ? (
-                <img src={profileImageUrl} alt={nickname} className="w-full h-full object-cover" />
+                <img src={getImageUrl(profileImageUrl)} alt={nickname} className="w-full h-full object-cover" />
             ) : (
                 nickname ? nickname.charAt(0).toUpperCase() : 'U'
             )}
@@ -104,7 +114,7 @@ export default function PostCard({ post, currentUser, onDelete, onRepost, onQuot
                 <p className="text-gray-700 text-sm line-clamp-3">{originalPost.content}</p>
                 {originalPost.imageUrl && (
                     <img
-                        src={originalPost.imageUrl}
+                        src={getImageUrl(originalPost.imageUrl)}
                         alt=""
                         className="mt-2 rounded-lg w-[70%] aspect-[4/3] object-cover"
                     />
@@ -162,7 +172,7 @@ export default function PostCard({ post, currentUser, onDelete, onRepost, onQuot
                     <p className="text-gray-600 mt-1 whitespace-pre-wrap">{post.content}</p>
                     {post.imageUrl && (
                         <img
-                            src={post.imageUrl}
+                            src={getImageUrl(post.imageUrl)}
                             className="mt-3 rounded-2xl w-[70%] aspect-[4/3] object-cover border"
                             alt=""
                         />

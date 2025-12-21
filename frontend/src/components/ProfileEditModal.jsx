@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
+// 백엔드 서버 주소
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
+// 이미지 URL을 전체 경로로 변환하는 헬퍼 함수
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url; // 이미 전체 URL인 경우
+    return `${BACKEND_URL}${url}`; // 상대 경로인 경우 백엔드 URL 추가
+};
 /**
  * 사용자 프로필 수정을 위한 모달 컴포넌트입니다.
  * 닉네임, 핸들, 자기소개 및 프로필 이미지를 수정할 수 있습니다.
@@ -88,7 +97,7 @@ export default function ProfileEditModal({ user, onClose, onSaved }) {
           <div className="flex flex-col items-center gap-2 mb-4">
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-saesori-green/20 relative group">
               {profileImageUrl ? (
-                <img src={profileImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                <img src={getImageUrl(profileImageUrl)} alt="Preview" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-gray-400 text-3xl font-bold">
                   {nickname?.charAt(0).toUpperCase() || 'U'}

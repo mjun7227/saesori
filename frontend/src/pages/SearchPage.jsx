@@ -8,6 +8,16 @@ function useQuery() {
     return new URLSearchParams(useLocation().search);
 }
 
+// 백엔드 서버 주소
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
+// 이미지 URL을 전체 경로로 변환하는 헬퍼 함수
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url; // 이미 전체 URL인 경우
+    return `${BACKEND_URL}${url}`; // 상대 경로인 경우 백엔드 URL 추가
+};
+
 export default function SearchPage() {
     const query = useQuery();
     const qParam = query.get('q') || '';
@@ -74,7 +84,7 @@ export default function SearchPage() {
                             <div key={u.id} className="p-4 bg-white rounded-2xl border border-saesori-green/10 flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-lg overflow-hidden border border-saesori-green/10 shadow-sm">
                                     {u.profileImageUrl ? (
-                                        <img src={u.profileImageUrl} alt={u.nickname} className="w-full h-full object-cover" />
+                                        <img src={getImageUrl(u.profileImageUrl)} alt={u.nickname} className="w-full h-full object-cover" />
                                     ) : (
                                         u.nickname ? u.nickname.charAt(0).toUpperCase() : 'U'
                                     )}

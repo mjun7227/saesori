@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// 환경 변수에서 백엔드 서버 주소를 가져오거나 기본값 사용
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
 const api = axios.create({
-    baseURL: 'http://localhost:8080/backend/api',
+    baseURL: `${BACKEND_URL}/backend/api`,
     headers: {
         'Content-Type': 'application/json',
     },
