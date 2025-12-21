@@ -5,6 +5,9 @@ import { usePosts } from '../context/PostContext';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
 import TreeDecoration from '../components/TreeDecoration';
+import UserListModal from '../components/UserListModal';
+import ReplyModal from '../components/ReplyModal';
+import QuoteModal from '../components/QuoteModal';
 
 export default function PostDetailPage() {
     const { postId } = useParams();
@@ -15,7 +18,6 @@ export default function PostDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showQuoteModal, setShowQuoteModal] = useState(false);
-    const [quoteContent, setQuoteContent] = useState('');
     const [selectedPostForQuote, setSelectedPostForQuote] = useState(null);
     const [likedUsers, setLikedUsers] = useState([]);
     const [repostedUsers, setRepostedUsers] = useState([]);
@@ -24,11 +26,7 @@ export default function PostDetailPage() {
     const [showLikesModal, setShowLikesModal] = useState(false);
     const [showRepostsModal, setShowRepostsModal] = useState(false);
     const [showReplyModal, setShowReplyModal] = useState(false);
-    const [replyContent, setReplyContent] = useState('');
     const [selectedPostForReply, setSelectedPostForReply] = useState(null);
-    const [replyImage, setReplyImage] = useState(null); // 업로드할 이미지 파일
-    const [replyImagePreview, setReplyImagePreview] = useState(null); // 이미지 미리보기 URL
-    const [isUploading, setIsUploading] = useState(false);
 
     const fetchPost = useCallback(async () => {
         try {
@@ -115,12 +113,9 @@ export default function PostDetailPage() {
         setShowQuoteModal(true);
     };
 
-    const handleQuoteSubmit = async () => {
-        if (!quoteContent.trim()) return alert('인용 내용을 입력해주세요');
-
+    const handleQuoteSubmit = async (content, targetPostId) => {
         try {
-            await quote(quoteContent, selectedPostForQuote.id);
-            setQuoteContent('');
+            await quote(content, targetPostId);
             setShowQuoteModal(false);
             setSelectedPostForQuote(null);
             alert('인용 게시되었습니다!');
@@ -149,7 +144,7 @@ export default function PostDetailPage() {
 
         try {
             await toggleLike(targetPostId, isLiked);
-            // locally update post detail for immediate UI feedback
+            // 즉각적인 UI 피드백을 위해 로컬 상태 업데이트
             if (post && post.id === targetPostId) {
                 setPost({
                     ...post,
@@ -179,27 +174,10 @@ export default function PostDetailPage() {
     };
 
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setReplyImage(file);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setReplyImagePreview(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
-    const handleReplySubmit = async () => {
-        if (!replyContent.trim() && !replyImage) return alert('내용을 입력해주세요');
-
-        setIsUploading(true);
+    const handleReplySubmit = async (content, targetPostId, imageFile) => {
         try {
-            await postReply(replyContent, selectedPostForReply.id, replyImage);
-            setReplyContent('');
-            setReplyImage(null);
-            setReplyImagePreview(null);
+            await postReply(content, targetPostId, imageFile);
             setShowReplyModal(false);
             setSelectedPostForReply(null);
             await fetchReplies(); // 답글 다시 조회 (재귀로 가져옴)
@@ -207,51 +185,11 @@ export default function PostDetailPage() {
         } catch (error) {
             console.error("Reply failed", error);
             alert(error.response?.data?.error || '답글 등록에 실패했습니다.');
-        } finally {
-            setIsUploading(false);
+            throw error; // 모달에서 로딩 상태를 처리할 수 있도록 에러를 전달하되, 여기서도 캐치함
+            // ReplyModal이 로딩 처리를 위해 try-finally를 사용하므로, 여기서 throw하면 로딩이 중단됨
         }
     };
 
-    // 사용자 목록 모달 컴포넌트
-    const UserListModal = ({ title, users, onClose }) => (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-[#fcfbf9] p-6 rounded-3xl shadow-xl max-w-md w-full mx-4 max-h-[80vh] flex flex-col border border-saesori-green/10">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-xl font-bold text-saesori-green-dark">{title}</h3>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 text-2xl"
-                    >
-                        ×
-                    </button>
-                </div>
-                <div className="overflow-y-auto flex-1">
-                    {users.length === 0 ? (
-                        <div className="text-center text-gray-500 py-8">아직 없습니다.</div>
-                    ) : (
-                        <div className="space-y-3">
-                            {users.map(u => (
-                                <Link
-                                    key={u.id}
-                                    to={`/profile/${u.id}`}
-                                    onClick={onClose}
-                                    className="flex items-center gap-3 p-3 rounded-2xl hover:bg-white/50 transition-colors"
-                                >
-                                    <div className="w-10 h-10 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-saesori-green-dark">
-                                        {u.nickname ? u.nickname.charAt(0).toUpperCase() : 'U'}
-                                    </div>
-                                    <div>
-                                        <div className="font-semibold text-gray-800">{u.nickname}</div>
-                                        <div className="text-sm text-gray-500">{u.email}</div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
 
     if (error) {
         return (
@@ -286,122 +224,29 @@ export default function PostDetailPage() {
 
             {/* 답글 모달 */}
             {showReplyModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#fcfbf9] p-6 rounded-3xl shadow-xl max-w-lg w-full mx-4 border border-saesori-green/10">
-                        <h3 className="text-xl font-bold mb-4 text-saesori-green-dark">답글 작성하기</h3>
-
-                        <div className="mb-4 p-4 border border-saesori-green/20 rounded-2xl bg-white/50 max-h-32 overflow-y-auto">
-                            <div className="font-bold text-sm text-saesori-green-dark">{selectedPostForReply?.nickname}</div>
-                            <p className="text-sm text-gray-600 mt-1">{selectedPostForReply?.content}</p>
-                        </div>
-
-                        <textarea
-                            className="w-full p-4 bg-white rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-saesori-green/30 border border-saesori-green/10 text-gray-700"
-                            placeholder="답글 내용을 입력하세요..."
-                            rows="4"
-                            value={replyContent}
-                            onChange={(e) => setReplyContent(e.target.value)}
-                        />
-
-                        {/* 이미지 미리보기 */}
-                        {replyImagePreview && (
-                            <div className="mt-2 relative inline-block">
-                                <img src={replyImagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-gray-200" />
-                                <button
-                                    onClick={() => {
-                                        setReplyImage(null);
-                                        setReplyImagePreview(null);
-                                    }}
-                                    className="absolute -top-1 -right-1 bg-gray-800 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-black"
-                                >
-                                    ×
-                                </button>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-2 mt-2">
-                            <label className="cursor-pointer text-saesori-green hover:bg-green-50 p-2 rounded-full transition-colors" title="이미지 추가">
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={handleImageChange}
-                                />
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                                </svg>
-                            </label>
-                        </div>
-
-
-
-
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={handleReplySubmit}
-                                disabled={isUploading}
-                                className="flex-1 bg-saesori-green text-white px-4 py-3 rounded-xl font-bold hover:bg-saesori-green-dark transition-colors disabled:opacity-60"
-                            >
-                                {isUploading ? '...' : '답글 작성'}
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowReplyModal(false);
-                                    setReplyContent('');
-                                    setSelectedPostForReply(null);
-                                }}
-                                className="flex-1 bg-gray-200 text-gray-600 px-4 py-3 rounded-xl font-bold hover:bg-gray-300 transition-colors"
-                            >
-                                취소
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <ReplyModal
+                    post={selectedPostForReply}
+                    onClose={() => {
+                        setShowReplyModal(false);
+                        setSelectedPostForReply(null);
+                    }}
+                    onReply={handleReplySubmit}
+                />
             )}
 
             {/* 인용 모달 */}
             {showQuoteModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-                    <div className="bg-[#fcfbf9] p-6 rounded-3xl shadow-xl max-w-lg w-full mx-4 border border-saesori-green/10">
-                        <h3 className="text-xl font-bold mb-4 text-saesori-green-dark">게시글 인용하기</h3>
-
-                        <div className="mb-4 p-4 border border-saesori-green/20 rounded-2xl bg-white/50">
-                            <div className="font-bold text-sm text-saesori-green-dark">{selectedPostForQuote?.nickname}</div>
-                            <p className="text-sm text-gray-600 mt-1">{selectedPostForQuote?.content}</p>
-                        </div>
-
-                        <textarea
-                            className="w-full p-4 bg-white rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-saesori-green/30 border border-saesori-green/10 text-gray-700"
-                            placeholder="인용 내용을 입력하세요..."
-                            rows="4"
-                            value={quoteContent}
-                            onChange={(e) => setQuoteContent(e.target.value)}
-                        />
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={handleQuoteSubmit}
-                                className="flex-1 bg-saesori-green text-white px-4 py-3 rounded-xl font-bold hover:bg-saesori-green-dark transition-colors"
-                            >
-                                인용하기
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setShowQuoteModal(false);
-                                    setQuoteContent('');
-                                    setSelectedPostForQuote(null);
-                                }}
-                                className="flex-1 bg-gray-200 text-gray-600 px-4 py-3 rounded-xl font-bold hover:bg-gray-300 transition-colors"
-                            >
-                                취소
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <QuoteModal
+                    post={selectedPostForQuote}
+                    onClose={() => {
+                        setShowQuoteModal(false);
+                        setSelectedPostForQuote(null);
+                    }}
+                    onQuote={handleQuoteSubmit}
+                />
             )}
 
-            {/* Header */}
+            {/* 상단 헤더 */}
             <div className="sticky top-0 z-20 bg-[#fcfbf9] px-12 pt-8 pb-4 border-b border-saesori-green/20 shrink-0">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/50 rounded-full transition-colors">
@@ -411,7 +256,7 @@ export default function PostDetailPage() {
                 </div>
             </div>
 
-            {/* Main Content */}
+            {/* 메인 콘텐츠 영역 */}
             <div className="px-12 flex-1 relative z-10 overflow-y-auto min-h-0 pb-48">
 
                 {loading ? (
@@ -420,7 +265,7 @@ export default function PostDetailPage() {
                     </div>
                 ) : (
                     <div className="mt-6">
-                        {/* Ancestors Thread */}
+                        {/* 상위 스레드 목록 */}
                         {ancestors.length > 0 && (
                             <div className="mb-2">
                                 {ancestors.map((ancestor) => (
@@ -434,13 +279,13 @@ export default function PostDetailPage() {
                                             onReply={handleReplyClick}
                                             onDelete={handleDelete}
                                         />
-                                        {/* Thread connection line */}
+                                        {/* 스레드 연결선 */}
                                         <div className="absolute left-9 top-full h-4 w-0.5 bg-gray-200 -ml-px z-0"></div>
-                                        {/* Spacing between ancestors */}
+                                        {/* 상위 게시글 간 간격 */}
                                         <div className="h-2"></div>
                                     </div>
                                 ))}
-                                {/* Connection to main post */}
+                                {/* 메인 게시글로의 연결 */}
                                 <div className="flex justify-center -mt-2 mb-2">
                                     <div className="w-0.5 h-4 bg-gray-200"></div>
                                 </div>
@@ -508,7 +353,7 @@ export default function PostDetailPage() {
                                         <div className="space-y-0 relative">
                                             {children.map(reply => (
                                                 <div key={reply.id} className="relative">
-                                                    {/* Indentation Visuals */}
+                                                    {/* 들여쓰기 시각 효과 */}
                                                     {depth > 0 && (
                                                         <div
                                                             className="absolute left-0 top-0 bottom-0 border-l-2 border-saesori-yellow ml-3"
@@ -529,7 +374,7 @@ export default function PostDetailPage() {
                                                         />
                                                     </div>
 
-                                                    {/* Recursive Render for Children of this Reply */}
+                                                    {/* 이 답글의 자식 답글들을 재귀적으로 렌더링 */}
                                                     <div className={depth > 0 ? 'ml-6' : ''}>
                                                         {renderReplyThread(reply.id, depth + 1)}
                                                     </div>
@@ -549,7 +394,7 @@ export default function PostDetailPage() {
                 )}
             </div>
 
-            {/* Tree Decoration */}
+            {/* 나무 장식 */}
             <TreeDecoration position="right" />
         </div>
     );

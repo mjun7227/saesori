@@ -12,7 +12,9 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     follower_count INT DEFAULT 0,
     following_count INT DEFAULT 0,
-    posts_count INT NOT NULL DEFAULT 0
+    posts_count INT NOT NULL DEFAULT 0,
+    bio VARCHAR(255),
+    profile_image_url VARCHAR(255)
 );
 
 -- Table: posts

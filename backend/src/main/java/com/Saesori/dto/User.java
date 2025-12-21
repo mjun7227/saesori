@@ -3,15 +3,20 @@ package com.Saesori.dto;
 import java.time.LocalDateTime;
 import java.sql.Timestamp; // 데이터베이스 DATETIME 호환성을 위해 java.sql.Timestamp 사용
 
+/**
+ * 사용자 정보를 담는 데이터 전송 객체(DTO)입니다.
+ */
 public class User {
-    private int id;
-    private String handle;
+    private int id; // 사용자 고유 ID
+    private String handle; // 사용자 핸들 (아이디)
     private String password; // 해시된 비밀번호
-    private String nickname;
-    private Timestamp createdAt;
-    private int followerCount;
-    private int followingCount;
-    private int postsCount;
+    private String nickname; // 사용자 닉네임
+    private Timestamp createdAt; // 계정 생성 일시
+    private int followerCount; // 팔로워 수
+    private int followingCount; // 팔로잉 수
+    private int postsCount; // 게시글 수
+    private String bio; // 자기소개
+    private String profileImageUrl; // 프로필 이미지 URL
 
     public User() {
     }
@@ -80,25 +85,44 @@ public class User {
     public void setFollowingCount(int followingCount) {
         this.followingCount = followingCount;
     }
+
     public int getPostsCount() {
-		return postsCount;
-	}
+        return postsCount;
+    }
 
-	public void setPostsCount(int postsCount) {
-		this.postsCount = postsCount;
-	}
+    public void setPostsCount(int postsCount) {
+        this.postsCount = postsCount;
+    }
 
-	@Override
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    @Override
     public String toString() {
         return "User{" +
-               "id=" + id +
-               ", handle='" + handle + "'" +
-               ", password='[PROTECTED]'" +
+                "id=" + id +
+                ", handle='" + handle + "'" +
+                ", password='[PROTECTED]'" +
                 ", nickname='" + nickname + "'" +
                 ", createdAt=" + createdAt +
                 ", followerCount=" + followerCount +
                 ", followingCount=" + followingCount +
-                ", postsCount="+postsCount +
+                ", postsCount=" + postsCount +
+                ", bio='" + bio + "'" +
+                ", profileImageUrl='" + profileImageUrl + "'" +
                 '}';
     }
 }

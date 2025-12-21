@@ -16,20 +16,20 @@ export default function SearchPage() {
     const [activeTab, setActiveTab] = useState('POSTS');
 
     useEffect(() => {
-        // run both searches when q changes
+        // 검색어가 변경될 때 게시글과 사용자 검색을 모두 수행
         if (!qParam) return;
 
-        // posts via context
+        // Context를 통한 게시글 검색
         searchPosts(qParam);
 
-        // users via api
+        // API를 통한 사용자 검색
         let canceled = false;
         (async () => {
             try {
                 const res = await api.search({ type: 'user', q: qParam });
                 if (!canceled) setUsers(res.data);
             } catch (e) {
-                console.error('user search failed', e);
+                console.error('사용자 검색 실패', e);
                 if (!canceled) setUsers([]);
             }
         })();
@@ -72,7 +72,13 @@ export default function SearchPage() {
                         {users.length === 0 && <div className="text-center text-gray-400 py-10 font-medium">사용자를 찾을 수 없습니다.</div>}
                         {users.map(u => (
                             <div key={u.id} className="p-4 bg-white rounded-2xl border border-saesori-green/10 flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-lg">{u.nickname ? u.nickname.charAt(0).toUpperCase() : 'U'}</div>
+                                <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-lg overflow-hidden border border-saesori-green/10 shadow-sm">
+                                    {u.profileImageUrl ? (
+                                        <img src={u.profileImageUrl} alt={u.nickname} className="w-full h-full object-cover" />
+                                    ) : (
+                                        u.nickname ? u.nickname.charAt(0).toUpperCase() : 'U'
+                                    )}
+                                </div>
                                 <div>
                                     <div className="font-bold text-saesori-green-dark">{u.nickname}</div>
                                     <div className="text-sm text-gray-500">@{u.handle}</div>

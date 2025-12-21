@@ -14,63 +14,58 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
 
+/**
+ * 새 정보를 다루는 API 컨트롤러입니다.
+ */
 @WebServlet("/api/birds/*")
-public class BirdController extends HttpServlet {
+public class BirdController extends BaseController {
     private static final long serialVersionUID = 1L;
-    private ObjectMapper objectMapper;
     private BirdDAO birdDAO;
 
     @Override
     public void init() throws ServletException {
         super.init();
-        objectMapper = new ObjectMapper();
-        objectMapper.findAndRegisterModules();
-        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         birdDAO = new BirdDAO();
     }
 
+    /**
+     * 새 목록 또는 특정 새 상세 정보를 조회합니다.
+     */
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String pathInfo = request.getPathInfo();
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String pathInfo = request.getPathInfo(); // 요청 경로 정보 가져오기
 
         try {
-            // /api/birds - 모든 새 조회
+            // /api/birds - 모든 새 종류 조회
             if (pathInfo == null || pathInfo.equals("/")) {
-                List<Bird> birds = birdDAO.getAllBirds();
-                objectMapper.writeValue(response.getWriter(), birds);
+                List<Bird> birds = birdDAO.getAllBirds(); // 모든 새 목록 조회
+                sendJsonResponse(response, birds); // JSON 응답 전송
                 return;
             }
 
-            // /api/birds/{birdId} - 새 ID로 조회
-            String[] pathParts = pathInfo.split("/");
-            if (pathParts.length == 2) {
+            // /api/birds/{birdId} - 특정 ID의 새 정보 조회
+            String[] pathParts = pathInfo.split("/"); // 경로를 '/' 기준으로 분할
+            if (pathParts.length == 2) { // 경로가 "/{birdId}" 형식인 경우
                 try {
-                    int birdId = Integer.parseInt(pathParts[1]);
-                    Bird bird = birdDAO.getBirdById(birdId);
+                    int birdId = Integer.parseInt(pathParts[1]); // birdId 추출 및 정수 변환
+                    Bird bird = birdDAO.getBirdById(birdId); // ID로 새 정보 조회
                     if (bird != null) {
-                        objectMapper.writeValue(response.getWriter(), bird);
+                        sendJsonResponse(response, bird); // 새 정보가 있으면 JSON 응답 전송
                     } else {
-                        sendError(response, HttpServletResponse.SC_NOT_FOUND, "Bird not found.");
+                        sendError(response, HttpServletResponse.SC_NOT_FOUND, "해당 새를 찾을 수 없습니다."); // 새를 찾을 수 없는 경우 404
+                                                                                                   // 에러
                     }
                 } catch (NumberFormatException e) {
-                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid bird ID format.");
+                    sendError(response, HttpServletResponse.SC_BAD_REQUEST, "ID 형식이 올바르지 않습니다."); // ID 형식이 잘못된 경우 400
+                                                                                                  // 에러
                 }
             } else {
-                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid bird endpoint.");
+                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "잘못된 API 경로입니다.");
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            handleException(response, e);
         }
-    }
-
-    private void sendError(HttpServletResponse response, int statusCode, String message) throws IOException {
-        response.setStatus(statusCode);
-        PrintWriter out = response.getWriter();
-        out.println(String.format("{\"error\": \"%s\"}", message));
-        out.flush();
     }
 }

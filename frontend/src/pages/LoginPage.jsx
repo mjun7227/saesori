@@ -2,22 +2,33 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * 로그인 페이지 컴포넌트입니다.
+ * 사용자의 핸들(아이디)과 비밀번호를 입력받아 인증을 시도합니다.
+ */
 export default function LoginPage() {
     const [formData, setFormData] = useState({ handle: '', password: '' });
     const [error, setError] = useState('');
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    /**
+     * 로그인 폼 제출 핸들러
+     * @param {Event} e 폼 제출 이벤트
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // AuthContext의 login 함수 호출
         const result = await login(formData.handle, formData.password);
+
         if (result.success) {
-            navigate('/');
+            navigate('/'); // 로그인 성공 시 홈으로 이동
         } else {
-            setError(result.message);
+            setError(result.message); // 실패 시 에러 메시지 표시
         }
-    }; 
+    };
 
     return (
         <div className="flex flex-col items-center justify-center py-12">

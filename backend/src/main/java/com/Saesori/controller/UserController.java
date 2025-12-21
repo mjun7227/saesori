@@ -18,27 +18,22 @@ import java.io.PrintWriter;
 import java.util.List;
 
 @WebServlet("/api/users/*")
-public class UserController extends HttpServlet {
+public class UserController extends BaseController {
     private static final long serialVersionUID = 1L;
-    private ObjectMapper objectMapper;
     private UserDAO userDAO;
     private UserBirdDAO userBirdDAO;
 
     @Override
     public void init() throws ServletException {
         super.init();
-        objectMapper = new ObjectMapper();
-        objectMapper.findAndRegisterModules();
-        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         userDAO = new UserDAO();
         userBirdDAO = new UserBirdDAO();
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
 
         try {
             if (pathInfo == null || pathInfo.equals("/")) {
@@ -47,28 +42,28 @@ public class UserController extends HttpServlet {
             }
 
             String[] pathParts = pathInfo.split("/");
-            
+
             // /api/users/{id} - 사용자 ID로 조회
-            if (pathParts.length == 2) { 
+            if (pathParts.length == 2) {
                 try {
                     int userId = Integer.parseInt(pathParts[1]);
                     User user = userDAO.getUserById(userId);
                     if (user != null) {
                         user.setPassword(null);
-                        objectMapper.writeValue(response.getWriter(), user);
+                        sendJsonResponse(response, user);
                     } else {
                         sendError(response, HttpServletResponse.SC_NOT_FOUND, "User not found.");
                     }
                 } catch (NumberFormatException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid user ID format.");
                 }
-            } 
+            }
             // /api/users/{userId}/birds - 사용자 보유 새 조회
-            else if (pathParts.length == 3 && pathParts[2].equals("birds")) { 
+            else if (pathParts.length == 3 && pathParts[2].equals("birds")) {
                 try {
                     int userId = Integer.parseInt(pathParts[1]);
                     List<Bird> birds = userBirdDAO.getUserBirds(userId);
-                    objectMapper.writeValue(response.getWriter(), birds);
+                    sendJsonResponse(response, birds);
                 } catch (NumberFormatException e) {
                     sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid user ID format.");
                 }
@@ -76,16 +71,14 @@ public class UserController extends HttpServlet {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid user endpoint.");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            handleException(response, e);
         }
     }
 
     @Override
-    protected void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    protected void doPut(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         String pathInfo = request.getPathInfo();
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
 
         try {
             if (pathInfo == null || pathInfo.equals("/")) {
@@ -94,7 +87,7 @@ public class UserController extends HttpServlet {
             }
 
             String[] pathParts = pathInfo.split("/");
-            // /api/users/{id} - update user
+            // /api/users/{id} - 사용자 정보 수정
             if (pathParts.length == 2) {
                 try {
                     int userId = Integer.parseInt(pathParts[1]);
@@ -104,21 +97,27 @@ public class UserController extends HttpServlet {
                         return;
                     }
 
-                    // parse JSON body
+                    // JSON 요청 본문 파싱
                     User input = objectMapper.readValue(request.getReader(), User.class);
                     if (input.getHandle() == null && input.getNickname() == null) {
                         sendError(response, HttpServletResponse.SC_BAD_REQUEST, "No fields to update.");
                         return;
                     }
 
-                    // apply fields
-                    if (input.getHandle() != null) existing.setHandle(input.getHandle());
-                    if (input.getNickname() != null) existing.setNickname(input.getNickname());
+                    // 필드 업데이트 적용
+                    if (input.getHandle() != null)
+                        existing.setHandle(input.getHandle());
+                    if (input.getNickname() != null)
+                        existing.setNickname(input.getNickname());
+                    if (input.getBio() != null)
+                        existing.setBio(input.getBio());
+                    if (input.getProfileImageUrl() != null)
+                        existing.setProfileImageUrl(input.getProfileImageUrl());
 
                     boolean ok = userDAO.updateUser(existing);
                     if (ok) {
                         existing.setPassword(null);
-                        objectMapper.writeValue(response.getWriter(), existing);
+                        sendJsonResponse(response, existing);
                     } else {
                         sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to update user.");
                     }
@@ -129,27 +128,14 @@ public class UserController extends HttpServlet {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid user endpoint.");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            handleException(response, e);
         }
     }
 
     @Override
-    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        sendError(response, HttpServletResponse.SC_METHOD_NOT_ALLOWED, "POST not allowed on this endpoint. Use /api/users/login or /api/users/register.");
-    }
-
-    private void sendError(HttpServletResponse response, int statusCode, String message) throws IOException {
-        response.setStatus(statusCode);
-        PrintWriter out = response.getWriter();
-        out.println(String.format("{\"error\": \"%s\"}", message));
-        out.flush();
-    }
-
-    private void sendJsonSuccess(HttpServletResponse response, int statusCode, String message) throws IOException {
-        response.setStatus(statusCode);
-        PrintWriter out = response.getWriter();
-        out.println(String.format("{\"message\": \"%s\"}", message));
-        out.flush();
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        sendError(response, HttpServletResponse.SC_METHOD_NOT_ALLOWED,
+                "POST not allowed on this endpoint. Use /api/users/login or /api/users/register.");
     }
 }

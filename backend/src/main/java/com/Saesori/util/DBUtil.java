@@ -1,3 +1,4 @@
+//DBUtill.java
 package com.Saesori.util;
 
 import java.io.InputStream;
@@ -53,7 +54,7 @@ public class DBUtil {
 		for (AutoCloseable ac : acs) {
 			try {
 				if (ac != null)
-					ac.close(); // conn, pstmt, rs
+					ac.close(); // Connection, PreparedStatement, ResultSet 등 자원 해제
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

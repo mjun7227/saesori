@@ -10,10 +10,10 @@ export const AuthProvider = ({ children }) => {
             const stored = localStorage.getItem('saesori_user');
             return stored ? JSON.parse(stored) : null;
         } catch {
-                return null;
-            }
-        });
-        const loading = false;
+            return null;
+        }
+    });
+    const loading = false;
 
     const login = async (handle, password) => {
         // try {
@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
         //   return { success: false, message: error.response?.data?.error || 'Login failed' };
         // }
 
-        // Using real API call
+        // 실제 API 호출 사용
         try {
             const response = await api.post('/users/login', { handle, password });
             const userData = response.data;
@@ -41,11 +41,11 @@ export const AuthProvider = ({ children }) => {
     const register = async (handle, password, nickname) => {
         try {
             await api.post('/users/register', { handle, password, nickname });
-            return { success: true }; // Require login after register
+            return { success: true }; // 회원 가입 후 로그인 필요
         } catch (error) {
             return { success: false, message: error.response?.data?.error || 'Registration failed' };
         }
-    }; 
+    };
 
     const logout = () => {
         setUser(null);

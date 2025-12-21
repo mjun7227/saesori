@@ -1,24 +1,83 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState, useContext, useRef, useCallback } from 'react';
+import { createContext, useReducer, useContext, useRef, useCallback } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
+import { useBirds } from './BirdContext';
 
 const PostContext = createContext(null);
 
+// 액션 타입 정의
+const ACTIONS = {
+    SET_LOADING: 'SET_LOADING',
+    SET_POSTS: 'SET_POSTS',
+    DELETE_POST: 'DELETE_POST',
+    TOGGLE_LIKE: 'TOGGLE_LIKE',
+};
+
+// 리듀서 함수
+function postReducer(state, action) {
+    switch (action.type) {
+        case ACTIONS.SET_LOADING:
+            return { ...state, loading: action.payload };
+
+        case ACTIONS.SET_POSTS:
+            return { ...state, posts: action.payload, loading: false };
+
+        case ACTIONS.DELETE_POST:
+            return {
+                ...state,
+                posts: state.posts.filter(p => p.id !== action.payload)
+            };
+
+        case ACTIONS.TOGGLE_LIKE: {
+            const { postId, isLiked } = action.payload;
+            return {
+                ...state,
+                posts: state.posts.map(post => {
+                    if (post.id === postId) {
+                        return {
+                            ...post,
+                            isLiked: !isLiked,
+                            likeCount: isLiked ? (post.likeCount - 1) : (post.likeCount + 1)
+                        };
+                    }
+                    if (post.originalPost && post.originalPost.id === postId) {
+                        return {
+                            ...post,
+                            originalPost: {
+                                ...post.originalPost,
+                                isLiked: !isLiked,
+                                likeCount: isLiked ? (post.originalPost.likeCount - 1) : (post.originalPost.likeCount + 1)
+                            }
+                        };
+                    }
+                    return post;
+                })
+            };
+        }
+
+        default:
+            return state;
+    }
+}
+
 export const PostProvider = ({ children }) => {
     const { user } = useAuth();
-    const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const { checkNewBirds } = useBirds();
+    const [state, dispatch] = useReducer(postReducer, {
+        posts: [],
+        loading: false
+    });
 
     const fetchControllerRef = useRef(null);
 
     const fetchPosts = useCallback(async (tab = 'GLOBAL') => {
-        // cancel previous fetch if running
+        // 실행 중인 이전 요청이 있으면 취소
         if (fetchControllerRef.current) {
             try {
                 fetchControllerRef.current.abort();
             } catch {
-                // ignore
+                // 예외 무시
             }
             fetchControllerRef.current = null;
         }
@@ -26,13 +85,13 @@ export const PostProvider = ({ children }) => {
         const controller = new AbortController();
         fetchControllerRef.current = controller;
 
-        setLoading(true);
+        dispatch({ type: ACTIONS.SET_LOADING, payload: true });
         try {
             let res;
             if (tab === 'FOLLOWING') {
                 if (!user) {
-                    // no change to posts (avoid flicker), but return empty
-                    setLoading(false);
+                    // 게시글 상태 유지(깜빡임 방지), 빈 배열 반환
+                    dispatch({ type: ACTIONS.SET_LOADING, payload: false });
                     fetchControllerRef.current = null;
                     return [];
                 }
@@ -41,24 +100,23 @@ export const PostProvider = ({ children }) => {
                 res = await api.get('/posts', { signal: controller.signal });
             }
 
-            // ignore if this request was aborted and another started
+            // 현재 요청이 중단되고 새로운 요청이 시작된 경우 무시
             if (fetchControllerRef.current !== controller) {
                 return [];
             }
 
             const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setPosts(sorted);
-            setLoading(false);
+            dispatch({ type: ACTIONS.SET_POSTS, payload: sorted });
             fetchControllerRef.current = null;
             return sorted;
         } catch (error) {
-            // if aborted, silently ignore
+            // 요청 중단인 경우 조용히 무시
             if (error?.name === 'CanceledError' || error?.code === 'ERR_CANCELED' || error?.name === 'AbortError') {
                 fetchControllerRef.current = null;
                 return [];
             }
             console.error('fetchPosts failed', error);
-            setLoading(false);
+            dispatch({ type: ACTIONS.SET_LOADING, payload: false });
             fetchControllerRef.current = null;
             return [];
         }
@@ -66,16 +124,15 @@ export const PostProvider = ({ children }) => {
 
     const searchPosts = useCallback(async (q) => {
         if (!q || q.trim() === '') return [];
-        setLoading(true);
+        dispatch({ type: ACTIONS.SET_LOADING, payload: true });
         try {
             const res = await api.search({ type: 'post', q });
             const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setPosts(sorted);
-            setLoading(false);
+            dispatch({ type: ACTIONS.SET_POSTS, payload: sorted });
             return sorted;
         } catch (error) {
             console.error('searchPosts failed', error);
-            setLoading(false);
+            dispatch({ type: ACTIONS.SET_LOADING, payload: false });
             return [];
         }
     }, []);
@@ -102,8 +159,9 @@ export const PostProvider = ({ children }) => {
                 imageUrl = uploadRes.data.url;
             }
             const res = await api.post('/posts', { content, imageUrl });
-            // refresh list
+            // 목록 새로고침
             await fetchPosts();
+            checkNewBirds();
             return res.data;
         } catch (error) {
             console.error('createPost failed', error);
@@ -115,6 +173,7 @@ export const PostProvider = ({ children }) => {
         try {
             await api.post('/posts/repost', { originalPostId });
             await fetchPosts();
+            checkNewBirds();
         } catch (error) {
             console.error('repost failed', error);
             throw error;
@@ -125,6 +184,7 @@ export const PostProvider = ({ children }) => {
         try {
             await api.post('/posts/quote', { content, originalPostId });
             await fetchPosts();
+            checkNewBirds();
         } catch (error) {
             console.error('quote failed', error);
             throw error;
@@ -144,6 +204,7 @@ export const PostProvider = ({ children }) => {
             }
             await api.post('/posts/reply', { content, originalPostId, imageUrl });
             await fetchPosts();
+            checkNewBirds();
         } catch (error) {
             console.error('reply failed', error);
             throw error;
@@ -153,7 +214,7 @@ export const PostProvider = ({ children }) => {
     const deletePost = async (postId) => {
         try {
             await api.delete(`/posts/${postId}`);
-            setPosts(prev => prev.filter(p => p.id !== postId));
+            dispatch({ type: ACTIONS.DELETE_POST, payload: postId });
         } catch (error) {
             console.error('deletePost failed', error);
             throw error;
@@ -161,34 +222,25 @@ export const PostProvider = ({ children }) => {
     };
 
     const toggleLike = async (postId, isLiked) => {
+        // 낙관적 업데이트 수행
+        dispatch({
+            type: ACTIONS.TOGGLE_LIKE,
+            payload: { postId, isLiked }
+        });
+
         try {
             if (isLiked) {
                 await api.delete(`/likes/${postId}`);
             } else {
                 await api.post(`/likes/${postId}`);
+                checkNewBirds();
             }
-
-            setPosts(prev => prev.map(post => {
-                if (post.id === postId) {
-                    return {
-                        ...post,
-                        isLiked: !isLiked,
-                        likeCount: isLiked ? (post.likeCount - 1) : (post.likeCount + 1)
-                    };
-                }
-                if (post.originalPost && post.originalPost.id === postId) {
-                    return {
-                        ...post,
-                        originalPost: {
-                            ...post.originalPost,
-                            isLiked: !isLiked,
-                            likeCount: isLiked ? (post.originalPost.likeCount - 1) : (post.originalPost.likeCount + 1)
-                        }
-                    };
-                }
-                return post;
-            }));
         } catch (error) {
+            // 에러 발생 시 상태 복구 (롤백)
+            dispatch({
+                type: ACTIONS.TOGGLE_LIKE,
+                payload: { postId, isLiked: !isLiked }
+            });
             console.error('toggleLike failed', error);
             throw error;
         }
@@ -196,8 +248,8 @@ export const PostProvider = ({ children }) => {
 
     return (
         <PostContext.Provider value={{
-            posts,
-            loading,
+            posts: state.posts,
+            loading: state.loading,
             fetchPosts,
             searchPosts,
             fetchPostById,

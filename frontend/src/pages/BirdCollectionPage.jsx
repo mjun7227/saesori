@@ -8,12 +8,12 @@ export default function BirdCollectionPage() {
     const { user } = useAuth();
 
     useEffect(() => {
-        // Fetch all birds
+        // 모든 새 정보 조회
         api.get('/birds').then(res => {
             setBirds(res.data);
         }).catch(err => console.error("Failed to fetch birds", err));
 
-        // Fetch my birds if logged in
+        // 로그인된 경우 보유한 새 정보 조회
         if (user) {
             api.get(`/users/${user.id}/birds`).then(res => {
                 const ids = new Set(res.data.map(b => b.id));
@@ -34,7 +34,11 @@ export default function BirdCollectionPage() {
                         <div key={bird.id} className={`relative p-4 rounded-xl border-2 transition-all ${isUnlocked ? 'bg-white border-saesori-green/20 shadow-md' : 'bg-gray-100 border-dashed border-gray-300 opacity-70'}`}>
                             <div className="aspect-square bg-gray-50 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
                                 {isUnlocked ? (
-                                    <img src={bird.imageUrl} alt={bird.name} className="w-full h-full object-cover" />
+                                    <img
+                                        src={`/${bird.name}1.png`}
+                                        alt={bird.name}
+                                        className="w-full h-full object-contain image-pixelated"
+                                    />
                                 ) : (
                                     <div className="text-4xl text-gray-300">?</div>
                                 )}

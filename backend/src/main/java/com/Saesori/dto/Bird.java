@@ -1,12 +1,15 @@
 package com.Saesori.dto;
 
+/**
+ * 새 정보를 담는 데이터 전송 객체(DTO)입니다.
+ */
 public class Bird {
-    private int id;
-    private String name;
-    private String imageUrl;
-    private String description;
-    private String conditionType;
-    private int conditionValue;
+    private int id; // 새 고유 ID
+    private String name; // 새 이름
+    private String imageUrl; // 새 이미지 URL
+    private String description; // 새 설명
+    private String conditionType; // 획득 조건 유형 (예: post_count, like_count)
+    private int conditionValue; // 획득 조건 값
 
     public Bird() {
     }
@@ -72,12 +75,12 @@ public class Bird {
     @Override
     public String toString() {
         return "Bird{" +
-               "id=" + id +
-               ", name='" + name + "'" +
-               ", imageUrl='" + imageUrl + "'" +
-               ", description='" + description + "'" +
-               ", conditionType='" + conditionType + "'" +
-               ", conditionValue=" + conditionValue +
-               '}';
+                "id=" + id +
+                ", name='" + name + "'" +
+                ", imageUrl='" + imageUrl + "'" +
+                ", description='" + description + "'" +
+                ", conditionType='" + conditionType + "'" +
+                ", conditionValue=" + conditionValue +
+                '}';
     }
 }

@@ -10,14 +10,13 @@ import java.sql.SQLException;
 public class LikeDAO {
 
     /**
-     * Add a like for a post by a user.
-     * This method adds a row to 'likes' table and increments 'like_count' in
-     * 'posts' table.
-     * Transactional.
+     * 게시글에 좋아요를 추가합니다.
+     * 'likes' 테이블에 행을 추가하고 'posts' 테이블의 'like_count'를 증가시킵니다.
+     * 트랜잭션으로 처리됩니다.
      * 
-     * @param postId
-     * @param userId
-     * @return true if successful
+     * @param postId 게시글 ID
+     * @param userId 사용자 ID
+     * @return 성공 시 true
      */
     public boolean addLike(int postId, int userId) {
         Connection conn = null;
@@ -29,16 +28,16 @@ public class LikeDAO {
 
         try {
             conn = DBUtil.getConnection();
-            conn.setAutoCommit(false); // Start transaction
+            conn.setAutoCommit(false); // 트랜잭션 시작
 
-            // 1. Insert into likes
+            // 1. likes 테이블에 좋아요 정보 삽입
             stmtInsert = conn.prepareStatement(sqlInsert);
             stmtInsert.setInt(1, postId);
             stmtInsert.setInt(2, userId);
             int inserted = stmtInsert.executeUpdate();
 
             if (inserted > 0) {
-                // 2. Update posts like_count
+                // 2. posts 테이블의 like_count 증가
                 stmtUpdate = conn.prepareStatement(sqlUpdate);
                 stmtUpdate.setInt(1, postId);
                 stmtUpdate.executeUpdate();
@@ -76,14 +75,13 @@ public class LikeDAO {
     }
 
     /**
-     * Remove a like for a post by a user.
-     * This method removes a row from 'likes' table and decrements 'like_count' in
-     * 'posts' table.
-     * Transactional.
+     * 게시글의 좋아요를 취소합니다.
+     * 'likes' 테이블에서 행을 삭제하고 'posts' 테이블의 'like_count'를 감소시킵니다.
+     * 트랜잭션으로 처리됩니다.
      * 
-     * @param postId
-     * @param userId
-     * @return true if successful
+     * @param postId 게시글 ID
+     * @param userId 사용자 ID
+     * @return 성공 시 true
      */
     public boolean removeLike(int postId, int userId) {
         Connection conn = null;
@@ -95,16 +93,16 @@ public class LikeDAO {
 
         try {
             conn = DBUtil.getConnection();
-            conn.setAutoCommit(false); // Start transaction
+            conn.setAutoCommit(false); // 트랜잭션 시작
 
-            // 1. Delete from likes
+            // 1. likes 테이블에서 데이터 삭제
             stmtDelete = conn.prepareStatement(sqlDelete);
             stmtDelete.setInt(1, postId);
             stmtDelete.setInt(2, userId);
             int deleted = stmtDelete.executeUpdate();
 
             if (deleted > 0) {
-                // 2. Update posts like_count
+                // 2. posts 테이블의 like_count 감소
                 stmtUpdate = conn.prepareStatement(sqlUpdate);
                 stmtUpdate.setInt(1, postId);
                 stmtUpdate.executeUpdate();
@@ -142,11 +140,11 @@ public class LikeDAO {
     }
 
     /**
-     * Check if a user likes a post.
+     * 사용자가 특정 게시글에 좋아요를 눌렀는지 확인합니다.
      * 
-     * @param postId
-     * @param userId
-     * @return true if liked
+     * @param postId 게시글 ID
+     * @param userId 사용자 ID
+     * @return 좋아요를 눌렀으면 true
      */
     public boolean isLiked(int postId, int userId) {
         String sql = "SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?";
@@ -167,5 +165,33 @@ public class LikeDAO {
         } finally {
             DBUtil.close(conn, stmt, rs);
         }
+    }
+
+    /**
+     * 사용자가 지금까지 누른 총 좋아요 수를 조회합니다.
+     * 
+     * @param userId 사용자 ID
+     * @return 총 좋아요 수
+     */
+    public int getTotalLikesGiven(int userId) {
+        String sql = "SELECT COUNT(*) FROM likes WHERE user_id = ?";
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            conn = DBUtil.getConnection();
+            stmt = conn.prepareStatement(sql);
+            stmt.setInt(1, userId);
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting total likes given: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.close(conn, stmt, rs);
+        }
+        return 0;
     }
 }

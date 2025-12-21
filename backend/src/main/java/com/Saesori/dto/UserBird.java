@@ -2,10 +2,13 @@ package com.Saesori.dto;
 
 import java.sql.Timestamp;
 
+/**
+ * 사용자가 획득한 새 정보를 관리하는 데이터 전송 객체(DTO)입니다.
+ */
 public class UserBird {
-    private int userId;
-    private int birdId;
-    private Timestamp acquiredAt;
+    private int userId; // 사용자 고유 ID
+    private int birdId; // 새 고유 ID
+    private Timestamp acquiredAt; // 새를 획득한 일시
 
     public UserBird() {
     }
@@ -44,9 +47,9 @@ public class UserBird {
     @Override
     public String toString() {
         return "UserBird{" +
-               "userId=" + userId +
-               ", birdId=" + birdId +
-               ", acquiredAt=" + acquiredAt +
-               '}';
+                "userId=" + userId +
+                ", birdId=" + birdId +
+                ", acquiredAt=" + acquiredAt +
+                '}';
     }
 }

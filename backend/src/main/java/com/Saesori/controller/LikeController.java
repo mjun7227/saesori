@@ -1,9 +1,11 @@
 package com.Saesori.controller;
 
 import com.Saesori.dao.LikeDAO;
+import com.Saesori.dao.PostDAO;
 import com.Saesori.service.BirdService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.Saesori.dto.User;
+import com.Saesori.dto.Post;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -17,33 +19,31 @@ import java.io.PrintWriter;
 import java.util.stream.Collectors;
 
 @WebServlet("/api/likes/*")
-public class LikeController extends HttpServlet {
+public class LikeController extends BaseController {
     private static final long serialVersionUID = 1L;
     private LikeDAO likeDAO;
+    private PostDAO postDAO;
+    private BirdService birdService;
 
     @Override
     public void init() throws ServletException {
         super.init();
         likeDAO = new LikeDAO();
+        postDAO = new PostDAO();
+        birdService = new BirdService();
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
         String pathInfo = request.getPathInfo();
 
         try {
-            HttpSession session = request.getSession(false);
-            User user = (session != null) ? (User) session.getAttribute("user") : null;
-
-            if (user == null) {
-                sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Login required to like a post.");
+            User user = getAuthenticatedUser(request, response);
+            if (user == null)
                 return;
-            }
 
-            // Expect /api/likes/{postId}
+            // /api/likes/{postId} 형식의 경로 기대
             if (pathInfo == null || pathInfo.equals("/")) {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST,
                         "postId required in path (e.g. /api/likes/123).");
@@ -64,8 +64,9 @@ public class LikeController extends HttpServlet {
             }
 
             if (likeDAO.addLike(postId, user.getId())) {
-                // Potential for gamification/birds here
-                sendJsonSuccess(response, HttpServletResponse.SC_CREATED, "Like added.", postId);
+                // 좋아요를 누른 유저 본인에게 새 지급 조건 확인
+                birdService.checkAndAwardBirds(user.getId(), "like_count");
+                sendJsonResponse(response, java.util.Map.of("message", "Like added.", "postId", postId));
             } else {
                 sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to add like.");
             }
@@ -73,29 +74,21 @@ public class LikeController extends HttpServlet {
         } catch (NumberFormatException e) {
             sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid postId format.");
         } catch (Exception e) {
-            e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Internal server error: " + e.getMessage());
+            handleException(response, e);
         }
     }
 
     @Override
     protected void doDelete(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
         String pathInfo = request.getPathInfo();
 
         try {
-            HttpSession session = request.getSession(false);
-            User user = (session != null) ? (User) session.getAttribute("user") : null;
-
-            if (user == null) {
-                sendError(response, HttpServletResponse.SC_UNAUTHORIZED, "Login required to unlike a post.");
+            User user = getAuthenticatedUser(request, response);
+            if (user == null)
                 return;
-            }
 
-            // Expect /api/likes/{postId}
+            // /api/likes/{postId} 형식의 경로 기대
             if (pathInfo == null || pathInfo.equals("/")) {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST,
                         "postId required in path (e.g. /api/likes/123).");
@@ -111,7 +104,7 @@ public class LikeController extends HttpServlet {
             int postId = Integer.parseInt(pathParts[1]);
 
             if (likeDAO.removeLike(postId, user.getId())) {
-                sendJsonSuccess(response, HttpServletResponse.SC_OK, "Like removed.", postId);
+                sendJsonResponse(response, java.util.Map.of("message", "Like removed.", "postId", postId));
             } else {
                 sendError(response, HttpServletResponse.SC_NOT_FOUND, "Like not found or failed to remove.");
             }
@@ -119,36 +112,7 @@ public class LikeController extends HttpServlet {
         } catch (NumberFormatException e) {
             sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid postId format.");
         } catch (Exception e) {
-            e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                    "Internal server error: " + e.getMessage());
-        }
-    }
-
-    private void sendError(HttpServletResponse response, int statusCode, String message) throws IOException {
-        response.setStatus(statusCode);
-        PrintWriter out = response.getWriter();
-        out.println(String.format("{\"error\": \"%s\"}", message));
-        out.flush();
-    }
-
-    private void sendJsonSuccess(HttpServletResponse response, int statusCode, String message, int postId)
-            throws IOException {
-        response.setStatus(statusCode);
-        PrintWriter out = response.getWriter();
-        out.println(String.format("{\"message\": \"%s\", \"postId\": %d}", message, postId));
-        out.flush();
-    }
-
-    private static class LikeRequest {
-        private int postId;
-
-        public int getPostId() {
-            return postId;
-        }
-
-        public void setPostId(int postId) {
-            this.postId = postId;
+            handleException(response, e);
         }
     }
 }

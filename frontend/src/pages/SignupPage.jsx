@@ -2,23 +2,34 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+/**
+ * 회원가입 페이지 컴포넌트입니다.
+ * 사용자의 닉네임, 핸들(아이디), 비밀번호를 입력받아 가입 처리를 수행합니다.
+ */
 export default function SignupPage() {
     const [formData, setFormData] = useState({ handle: '', password: '', nickname: '' });
     const [error, setError] = useState('');
     const { register } = useAuth();
     const navigate = useNavigate();
 
+    /**
+     * 회원가입 폼 제출 핸들러
+     * @param {Event} e 폼 제출 이벤트
+     */
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // AuthContext의 register 함수 호출
         const result = await register(formData.handle, formData.password, formData.nickname);
+
         if (result.success) {
             alert('회원가입이 완료되었습니다! 로그인해주세요.');
-            navigate('/login');
+            navigate('/login'); // 가입 성공 시 로그인 페이지로 이동
         } else {
-            setError(result.message);
+            setError(result.message); // 실패 시 에러 메시지 표시
         }
-    }; 
+    };
 
     return (
         <div className="flex flex-col items-center justify-center py-12">

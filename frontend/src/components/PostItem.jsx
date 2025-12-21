@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import api from '../services/api';
 
 export default function PostItem({ post, currentUser, onDelete }) {
-    // Assuming backend returns 'liked' (from isLiked getter) and 'likeCount'
     const [liked, setLiked] = useState(post.liked);
     const [likeCount, setLikeCount] = useState(post.likeCount || 0);
 
@@ -13,21 +12,20 @@ export default function PostItem({ post, currentUser, onDelete }) {
         const originalLiked = liked;
         const originalCount = likeCount;
 
-        // Optimistic update
         setLiked(!liked);
         setLikeCount(liked ? likeCount - 1 : likeCount + 1);
 
         try {
             if (originalLiked) {
-                // Remove like
+
                 await api.delete(`/likes/${post.id}`);
             } else {
-                // Add like
+
                 await api.post(`/likes/${post.id}`);
             }
         } catch (error) {
-            console.error("Like toggle failed", error);
-            // Revert
+            console.error("좋아요 처리 실패", error);
+            // 상태 복구
             setLiked(originalLiked);
             setLikeCount(originalCount);
         }
@@ -50,7 +48,6 @@ export default function PostItem({ post, currentUser, onDelete }) {
                             <Link to={`/profile/${post.userId}`} className="font-bold text-gray-800 text-lg hover:underline leading-none">
                                 {post.nickname || `User ${post.userId}`}
                             </Link>
-                            {/* <span className="text-sm text-gray-400 font-normal">@{post.userId}</span> */}
                         </div>
 
                         {currentUser && currentUser.id === post.userId && (
@@ -68,7 +65,6 @@ export default function PostItem({ post, currentUser, onDelete }) {
                     <div className="flex items-center justify-between mt-3">
                         <div className="text-xs text-gray-400">{createdAtText}</div>
 
-                        {/* Like Button */}
                         <button
                             onClick={handleLike}
                             className={`flex items-center gap-1.5 text-sm transition-colors ${liked ? 'text-[#dbe4ca]' : 'text-gray-400 hover:text-[#dbe4ca]'}`}

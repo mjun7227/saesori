@@ -2,11 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import BirdModal from '../components/BirdModal';
+import { usePosts } from '../context/PostContext';
+import { useBirds } from '../context/BirdContext';
 import PostCard from '../components/PostCard';
 import TreeDecoration from '../components/TreeDecoration';
 import ProfileEditModal from '../components/ProfileEditModal';
- 
+import ReplyModal from '../components/ReplyModal';
+import QuoteModal from '../components/QuoteModal';
+
 export default function ProfilePage() {
   const { userId } = useParams();
   const { user: currentUser } = useAuth();
@@ -17,6 +20,12 @@ export default function ProfilePage() {
   const [birds, setBirds] = useState([]);
   const [selectedBird, setSelectedBird] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [selectedPostForQuote, setSelectedPostForQuote] = useState(null);
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [selectedPostForReply, setSelectedPostForReply] = useState(null);
+  const { repost, quote, reply: postReply, toggleLike } = usePosts();
+  const { checkNewBirds } = useBirds();
 
   const fetchProfile = useCallback(() => {
     api
@@ -71,10 +80,74 @@ export default function ProfilePage() {
           followingId: parseInt(userId, 10),
         });
         setIsFollowing(true);
+        checkNewBirds();
       }
-      fetchProfile(); // Refresh stats
+      fetchProfile(); // 통계 수치 새로고침
     } catch (error) {
       console.error('Failed to toggle follow', error);
+    }
+  };
+
+  const handleLike = async (postId, isLiked) => {
+    if (!currentUser) return alert('로그인이 필요합니다');
+
+    try {
+      await toggleLike(postId, isLiked);
+      fetchPosts(); // 좋아요 수 업데이트를 위해 게시글 목록 새로고침
+    } catch (error) {
+      console.error('Like failed', error);
+      alert(error.response?.data?.error || '좋아요 처리에 실패했습니다.');
+    }
+  };
+
+  const handleRepost = async (postId) => {
+    if (!currentUser) return alert('로그인이 필요합니다');
+    if (!window.confirm('이 게시글을 리트윗하시겠습니까?')) return;
+
+    try {
+      await repost(postId);
+      fetchPosts(); // 게시글 목록 새로고침
+    } catch (error) {
+      console.error('Repost failed', error);
+      alert(error.response?.data?.error || '리트윗에 실패했습니다.');
+    }
+  };
+
+  const handleQuoteClick = (post) => {
+    if (!currentUser) return alert('로그인이 필요합니다');
+    setSelectedPostForQuote(post);
+    setShowQuoteModal(true);
+  };
+
+  const handleQuoteSubmit = async (content, targetPostId) => {
+    try {
+      await quote(content, targetPostId);
+      setShowQuoteModal(false);
+      setSelectedPostForQuote(null);
+      fetchPosts(); // 게시글 목록 새로고침
+      alert('인용 게시되었습니다!');
+    } catch (error) {
+      console.error('Quote failed', error);
+      alert(error.response?.data?.error || '인용에 실패했습니다.');
+    }
+  };
+
+  const handleReplyClick = (post) => {
+    if (!currentUser) return alert('로그인이 필요합니다');
+    setSelectedPostForReply(post);
+    setShowReplyModal(true);
+  };
+
+  const handleReplySubmit = async (content, targetPostId, imageFile) => {
+    try {
+      await postReply(content, targetPostId, imageFile);
+      setShowReplyModal(false);
+      setSelectedPostForReply(null);
+      fetchPosts(); // 게시글 목록 새로고침
+      alert('답글이 등록되었습니다!');
+    } catch (error) {
+      console.error('Reply failed', error);
+      alert(error.response?.data?.error || '답글 등록에 실패했습니다.');
     }
   };
 
@@ -88,15 +161,22 @@ export default function ProfilePage() {
 
   return (
     <div className="bg-[#fcfbf9] rounded-3xl shadow-sm h-[calc(100vh-4rem)] relative flex flex-col overflow-hidden">
-      {/* Header */}
+      {/* 프로필 상단 헤더 */}
       <div className="px-12 pt-8 pb-6 shrink-0 border-b border-saesori-green/20">
         <div className="flex items-center gap-6">
-          <div className="w-24 h-24 rounded-full bg-[#dbe4ca] flex items-center justify-center text-4xl font-bold text-saesori-green-dark shrink-0">
-            {profileUser.nickname ? profileUser.nickname.charAt(0).toUpperCase() : 'U'}
+          <div className="w-24 h-24 rounded-full bg-[#dbe4ca] flex items-center justify-center text-4xl font-bold text-saesori-green-dark shrink-0 overflow-hidden border-2 border-saesori-green/20 shadow-sm">
+            {profileUser.profileImageUrl ? (
+              <img src={profileUser.profileImageUrl} alt={profileUser.nickname} className="w-full h-full object-cover" />
+            ) : (
+              profileUser.nickname ? profileUser.nickname.charAt(0).toUpperCase() : 'U'
+            )}
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-gray-800">{profileUser.nickname}</h1>
             <p className="text-gray-500 text-sm">@{profileUser.handle}</p>
+            {profileUser.bio && (
+              <p className="mt-2 text-gray-700 text-sm whitespace-pre-wrap">{profileUser.bio}</p>
+            )}
             <div className="flex gap-6 mt-4">
               <div className="text-center">
                 <span className="block font-bold text-lg text-saesori-green-dark">{posts.length}</span>
@@ -127,7 +207,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* 탭 메뉴 */}
       <div className="sticky top-0 z-20 bg-[#fcfbf9] flex pt-4 pb-4 border-b border-saesori-green/20 shrink-0">
         <button
           className={`flex-1 pb-4 text-lg font-bold tracking-wide transition-colors text-center ${activeTab === 'posts' ? 'text-saesori-green-dark border-b-2 border-saesori-green-dark' : 'text-gray-400 hover:text-saesori-green'}`}
@@ -143,7 +223,7 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* Content */}
+      {/* 탭별 콘텐츠 영역 */}
       <div className="px-12 flex-1 relative z-10 overflow-y-auto min-h-0 pb-48">
         {activeTab === 'posts' ? (
           <div className="space-y-6 mt-6">
@@ -151,7 +231,17 @@ export default function ProfilePage() {
               <div className="text-center text-gray-400 py-10 font-medium">작성된 글이 없습니다.</div>
             ) : (
               posts.map((post) => (
-                <PostCard key={post.id} post={post} currentUser={currentUser} onDelete={null} onRepost={null} onQuote={null} showActions={false} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  currentUser={currentUser}
+                  onDelete={null}
+                  onRepost={handleRepost}
+                  onQuote={handleQuoteClick}
+                  onLike={handleLike}
+                  onReply={handleReplyClick}
+                  showActions={true}
+                />
               ))
             )}
           </div>
@@ -162,7 +252,11 @@ export default function ProfilePage() {
             ) : (
               birds.map((bird) => (
                 <div key={bird.id} onClick={() => setSelectedBird(bird)} className="cursor-pointer group relative bg-white/50 rounded-2xl overflow-hidden aspect-square flex items-center justify-center border border-saesori-green/10 hover:border-saesori-green/30 hover:shadow-md transition-all">
-                  <img src={bird.description || 'https://via.placeholder.com/150'} alt={bird.name} className="w-2/3 h-2/3 object-contain drop-shadow-sm group-hover:scale-110 transition-transform" />
+                  <img
+                    src={`/${bird.name}1.png`}
+                    alt={bird.name}
+                    className="w-2/3 h-2/3 object-contain drop-shadow-sm group-hover:scale-110 transition-transform image-pixelated"
+                  />
                   <div className="absolute bottom-0 w-full bg-black/60 text-white text-xs text-center py-1 opacity-0 group-hover:opacity-100 transition-opacity">{bird.name}</div>
                 </div>
               ))
@@ -171,10 +265,8 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Tree Decoration */}
+      {/* 나무 장식 */}
       <TreeDecoration position="right" />
-
-      {selectedBird && <BirdModal bird={selectedBird} onClose={() => setSelectedBird(null)} />}
 
       {showEditModal && (
         <ProfileEditModal
@@ -183,6 +275,30 @@ export default function ProfilePage() {
           onSaved={() => {
             fetchProfile();
           }}
+        />
+      )}
+
+
+      {/* 공용 모달 영역 */}
+      {showReplyModal && (
+        <ReplyModal
+          post={selectedPostForReply}
+          onClose={() => {
+            setShowReplyModal(false);
+            setSelectedPostForReply(null);
+          }}
+          onReply={handleReplySubmit}
+        />
+      )}
+
+      {showQuoteModal && (
+        <QuoteModal
+          post={selectedPostForQuote}
+          onClose={() => {
+            setShowQuoteModal(false);
+            setSelectedPostForQuote(null);
+          }}
+          onQuote={handleQuoteSubmit}
         />
       )}
     </div>

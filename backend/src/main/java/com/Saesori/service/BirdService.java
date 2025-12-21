@@ -2,6 +2,7 @@ package com.Saesori.service;
 
 import com.Saesori.dao.BirdDAO;
 import com.Saesori.dao.FollowDAO;
+import com.Saesori.dao.LikeDAO;
 import com.Saesori.dao.PostDAO;
 import com.Saesori.dao.UserBirdDAO;
 import com.Saesori.dto.Bird;
@@ -14,17 +15,20 @@ public class BirdService {
     private UserBirdDAO userBirdDAO;
     private PostDAO postDAO;
     private FollowDAO followDAO;
+    private LikeDAO likeDAO;
 
     public BirdService() {
         this.birdDAO = new BirdDAO();
         this.userBirdDAO = new UserBirdDAO();
         this.postDAO = new PostDAO();
         this.followDAO = new FollowDAO();
+        this.likeDAO = new LikeDAO();
     }
 
     /**
      * 사용자의 활동을 확인하고 조건에 맞는 새를 지급합니다.
-     * @param userId 사용자 ID
+     * 
+     * @param userId        사용자 ID
      * @param conditionType 활동 유형 ("post_count", "friend_count" 등)
      */
     public void checkAndAwardBirds(int userId, String conditionType) {
@@ -32,9 +36,11 @@ public class BirdService {
 
         // 조건 유형에 따라 현재 수치 조회
         if ("post_count".equals(conditionType)) {
-            currentConditionValue = postDAO.getPostsByUserId(userId).size();
+            currentConditionValue = postDAO.getPostsByUserId(userId, userId).size();
         } else if ("friend_count".equals(conditionType)) {
             currentConditionValue = followDAO.getFollowingCount(userId);
+        } else if ("like_count".equals(conditionType)) {
+            currentConditionValue = likeDAO.getTotalLikesGiven(userId);
         } else {
             return; // 알 수 없는 조건
         }
@@ -48,7 +54,7 @@ public class BirdService {
                 UserBird userBird = new UserBird();
                 userBird.setUserId(userId);
                 userBird.setBirdId(bird.getId());
-                
+
                 // 새 지급
                 if (userBirdDAO.addUserBird(userBird)) {
                     System.out.println("User " + userId + " acquired new bird: " + bird.getName());

@@ -16,71 +16,53 @@ import java.io.IOException;
 import java.util.List;
 
 @WebServlet(urlPatterns = { "/api/search" })
-public class SearchController extends HttpServlet {
+public class SearchController extends BaseController {
     private static final long serialVersionUID = 1L;
-    private ObjectMapper objectMapper;
     private UserDAO userDAO;
     private PostDAO postDAO;
 
     @Override
     public void init() throws ServletException {
         super.init();
-        objectMapper = new ObjectMapper();
-        objectMapper.findAndRegisterModules();
-        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
         userDAO = new UserDAO();
         postDAO = new PostDAO();
     }
 
     @Override
-    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.setCharacterEncoding("UTF-8");
-
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
         try {
             String q = request.getParameter("q");
-            String type = request.getParameter("type"); // expected: "user" or "post"
+            String type = request.getParameter("type"); // "user" 또는 "post" 타입 기대
 
-            if (q == null || q.trim().isEmpty()) {
+            if (isEmpty(q)) {
                 sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Query parameter 'q' is required.");
                 return;
             }
-            if (type == null || type.trim().isEmpty()) {
-                // default to post search if not provided
+            if (isEmpty(type)) {
+                // 타입이 제공되지 않은 경우 기본적으로 'post' 검색 수행
                 type = "post";
             }
 
-            // Current user (for like status in posts)
-            jakarta.servlet.http.HttpSession session = request.getSession(false);
-            com.Saesori.dto.User user = (session != null) ? (com.Saesori.dto.User) session.getAttribute("user") : null;
-            int currentUserId = (user != null) ? user.getId() : 0;
+            // 현재 사용자 ID (게시글의 좋아요 상태 확인용)
+            int currentUserId = getOptionalUserId(request);
 
             if ("user".equalsIgnoreCase(type)) {
                 List<User> users = userDAO.searchUsers(q);
-                objectMapper.writeValue(response.getWriter(), users);
-                return;
+                sendJsonResponse(response, users);
             } else if ("post".equalsIgnoreCase(type)) {
                 List<Post> posts = postDAO.searchPosts(q, currentUserId);
-                objectMapper.writeValue(response.getWriter(), posts);
-                return;
+                sendJsonResponse(response, posts);
             } else if ("all".equalsIgnoreCase(type)) {
                 List<User> users = userDAO.searchUsers(q);
                 List<Post> posts = postDAO.searchPosts(q, currentUserId);
-                objectMapper.writeValue(response.getWriter(), java.util.Map.of("users", users, "posts", posts));
-                return;
+                sendJsonResponse(response, java.util.Map.of("users", users, "posts", posts));
             } else {
-                sendError(response, HttpServletResponse.SC_BAD_REQUEST, "Invalid type parameter. Use 'user', 'post' or 'all'.");
-                return;
+                sendError(response, HttpServletResponse.SC_BAD_REQUEST,
+                        "Invalid type parameter. Use 'user', 'post' or 'all'.");
             }
-
         } catch (Exception e) {
-            e.printStackTrace();
-            sendError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Internal server error: " + e.getMessage());
+            handleException(response, e);
         }
-    }
-
-    private void sendError(HttpServletResponse response, int status, String message) throws IOException {
-        response.setStatus(status);
-        objectMapper.writeValue(response.getWriter(), java.util.Collections.singletonMap("error", message));
     }
 }
