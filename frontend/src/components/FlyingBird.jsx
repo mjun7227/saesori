@@ -17,8 +17,20 @@ const FlyingBird = () => {
     const [isFlying, setIsFlying] = useState(false);
     const [currentBirdName, setCurrentBirdName] = useState('오목눈이');
     const [frame, setFrame] = useState(1);
+    const [isHidden, setIsHidden] = useState(() => {
+        return localStorage.getItem('hideFlyingBird') === 'true';
+    });
 
     const birdList = ownedBirds || [];
+
+    // localStorage 변경 감지
+    useEffect(() => {
+        const handleStorageChange = () => {
+            setIsHidden(localStorage.getItem('hideFlyingBird') === 'true');
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
 
     // 1. 모든 새의 모든 프레임(1,2,3) 경로를 미리 계산
     const allBirdFrames = useMemo(() => {
@@ -83,7 +95,7 @@ const FlyingBird = () => {
         return () => clearTimeout(initialTimer);
     }, [generateRandomConfig]);
 
-    if (birdList.length === 0) return null;
+    if (birdList.length === 0 || isHidden) return null;
 
     return (
         <>

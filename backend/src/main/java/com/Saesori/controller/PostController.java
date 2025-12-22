@@ -50,7 +50,7 @@ public class PostController extends BaseController {
                 User user = getAuthenticatedUser(req, resp);
                 if (user == null)
                     return;
-                sendJsonResponse(resp, postDAO.getFollowingTimeline(user.getId(), currentUserId));
+                sendJsonResponse(resp, postDAO.getFollowingTimeline(currentUserId));
                 return;
             }
 

@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { useState, createContext, useContext } from 'react';
 import MainLayout from './layouts/MainLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -14,18 +15,36 @@ import { BirdProvider } from './context/BirdContext';
 
 import FlyingBird from './components/FlyingBird';
 
+// FlyingBird 활성화 상태 Context
+const FlyingBirdContext = createContext();
+
+export const useFlyingBirdContext = () => {
+  conontext = useContext(FlyingBirdContext);
+  if (!context) {
+    throw new Error('useFlyingBirdContext must be used within FlyingBirdProvider');
+  }
+  return context;
+};
+
 /**
  * 애플리케이션의 루트 컴포넌트입니다.
  * 전역 상태(Context)를 제공하고 라우팅을 정의합니다.
  */
 function App() {
+  const [showFlyingBird, setShowFlyingBird] = useState(true);
+
   return (
-    <AuthProvider>
-      <BirdProvider>
-        <PostProvider>
-          {/* 배경에서 날아다니는 오목눈이 장식 */}
-          <FlyingBird />
-          <FlyingBird />
+    <FlyingBirdContext.Provider value={{ showFlyingBird, setShowFlyingBird }}>
+      <AuthProvider>
+        <BirdProvider>
+          <PostProvider>
+            {/* 배경에서 날아다니는 새 장식 */}
+            {showFlyingBird && (
+              <>
+                <FlyingBird />
+                <FlyingBird />
+              </>
+            )}
 
           {/* 메인 라우팅 설정 */}
           <Routes>
@@ -40,9 +59,10 @@ function App() {
               <Route path="*" element={<NotFoundPage />} />
             </Route>
           </Routes>
-        </PostProvider>
-      </BirdProvider>
-    </AuthProvider>
+          </PostProvider>
+        </BirdProvider>
+      </AuthProvider>
+    </FlyingBirdContext.Provider>
   );
 }
 

@@ -13,6 +13,9 @@ export default function Navbar({ className = '', onClose }) {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [q, setQ] = useState('');
+    const [hideFlyingBird, setHideFlyingBird] = useState(() => {
+        return localStorage.getItem('hideFlyingBird') === 'true';
+    });
 
     /**
      * 로그아웃 처리 핸들러
@@ -20,6 +23,15 @@ export default function Navbar({ className = '', onClose }) {
     const handleLogout = () => {
         logout();
         navigate('/login'); // 로그아웃 후 로그인 페이지로 이동
+    };
+
+    /**
+     * 날아다니는 새 숨기기 토글
+     */
+    const toggleFlyingBird = () => {
+        const newState = !hideFlyingBird;
+        setHideFlyingBird(newState);
+        localStorage.setItem('hideFlyingBird', newState.toString());
     };
 
     return (
@@ -82,6 +94,14 @@ export default function Navbar({ className = '', onClose }) {
                         </Link>
                     </div>
                 )}
+
+                {/* 새 숨기기 버튼 */}
+                <button 
+                    onClick={toggleFlyingBird}
+                    className="text-left text-sm hover:text-saesori-green transition-colors uppercase font-normal"
+                >
+                    {hideFlyingBird ? '새 보이기' : '새 숨기기'}
+                </button>
             </div>
 
             {/* Tree Decoration - 겹쳐서 표시되는 배경 장식 */}
