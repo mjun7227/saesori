@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import PostCard from '../components/PostCard';
 import { usePosts } from '../context/PostContext';
@@ -21,6 +21,7 @@ const getImageUrl = (url) => {
 export default function SearchPage() {
     const query = useQuery();
     const qParam = query.get('q') || '';
+    const navigate = useNavigate();
     const { searchPosts, loading, posts } = usePosts();
     const [users, setUsers] = useState([]);
     const [activeTab, setActiveTab] = useState('POSTS');
@@ -81,7 +82,11 @@ export default function SearchPage() {
                     <div className="space-y-4">
                         {users.length === 0 && <div className="text-center text-gray-400 py-10 font-medium">사용자를 찾을 수 없습니다.</div>}
                         {users.map(u => (
-                            <div key={u.id} className="p-4 bg-white rounded-2xl border border-saesori-green/10 flex items-center gap-4">
+                            <div 
+                                key={u.id} 
+                                onClick={() => navigate(`/profile/${u.id}`)}
+                                className="p-4 bg-white rounded-2xl border border-saesori-green/10 flex items-center gap-4 hover:bg-saesori-green/5 transition-colors cursor-pointer"
+                            >
                                 <div className="w-12 h-12 rounded-full bg-[#dbe4ca] flex items-center justify-center font-bold text-lg overflow-hidden border border-saesori-green/10 shadow-sm">
                                     {u.profileImageUrl ? (
                                         <img src={getImageUrl(u.profileImageUrl)} alt={u.nickname} className="w-full h-full object-cover" />
