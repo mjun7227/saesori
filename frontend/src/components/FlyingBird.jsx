@@ -12,16 +12,13 @@ import { useBirds } from '../context/BirdContext';
  * 비행 중에는 이미지 교체가 아닌 display 제어로 네트워크 요청을 방지합니다.
  */
 const FlyingBird = () => {
-    const { ownedBirds, showBirds } = useBirds();
+    const { ownedBirds, showFlyingBirds } = useBirds();
     const [config, setConfig] = useState(null);
     const [isFlying, setIsFlying] = useState(false);
     const [currentBirdName, setCurrentBirdName] = useState('오목눈이');
     const [frame, setFrame] = useState(1);
 
     const birdList = ownedBirds || [];
-
-    // showBirds가 false이면 렌더링하지 않음
-    if (!showBirds) return null;
 
     // 1. 모든 새의 모든 프레임(1,2,3) 경로를 미리 계산
     const allBirdFrames = useMemo(() => {
@@ -38,7 +35,7 @@ const FlyingBird = () => {
 
     // 2. 비행 랜덤 설정 생성
     const generateRandomConfig = useCallback(() => {
-        if (birdList.length === 0) {
+        if (birdList.length === 0 || !showFlyingBirds) {
             setIsFlying(false);
             return;
         }
@@ -47,6 +44,7 @@ const FlyingBird = () => {
         const waitTime = Math.random() * 10000;
 
         setTimeout(() => {
+            if (!showFlyingBirds) return; // 토글 변경 시 실행 중지
             const randomY = Math.floor(Math.random() * 60) + 10;
             const randomDuration = Math.random() * 8 + 8;
             const randomBird = birdList[Math.floor(Math.random() * birdList.length)];
@@ -59,7 +57,7 @@ const FlyingBird = () => {
             });
             setIsFlying(true);
         }, waitTime);
-    }, [birdList]);
+    }, [birdList, showFlyingBirds]);
 
     // 비행 타이머 제어
     useEffect(() => {
@@ -82,9 +80,10 @@ const FlyingBird = () => {
 
     // 초기 시작 타이머
     useEffect(() => {
+        if (!showFlyingBirds) return; // 비행 새가 비활성화된 경우 시작 안 함
         const initialTimer = setTimeout(generateRandomConfig, Math.random() * 3000);
         return () => clearTimeout(initialTimer);
-    }, [generateRandomConfig]);
+    }, [generateRandomConfig, showFlyingBirds]);
 
     if (birdList.length === 0) return null;
 
@@ -98,7 +97,7 @@ const FlyingBird = () => {
             </div>
 
             <AnimatePresence>
-                {isFlying && config && (
+                {isFlying && config && showFlyingBirds && (
                     <motion.div
                         key={config.key}
                         initial={{ x: '-150px', y: `${config.startY}vh` }}
