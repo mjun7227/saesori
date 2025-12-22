@@ -15,6 +15,20 @@ export const BirdProvider = ({ children }) => {
     const { user } = useAuth();
     const [ownedBirds, setOwnedBirds] = useState([]);
     const [newBird, setNewBird] = useState(null);
+    const [showBirds, setShowBirds] = useState(() => {
+        // localStorage에서 초기값 가져오기
+        const saved = localStorage.getItem('showBirds');
+        return saved !== null ? JSON.parse(saved) : true;
+    });
+
+    // showBirds 변경 시 localStorage에 저장
+    useEffect(() => {
+        localStorage.setItem('showBirds', JSON.stringify(showBirds));
+    }, [showBirds]);
+
+    const toggleShowBirds = () => {
+        setShowBirds(prev => !prev);
+    };
 
     /**
      * 새로운 새 획득 여부를 확인합니다.
@@ -56,7 +70,7 @@ export const BirdProvider = ({ children }) => {
     }, [user]);
 
     return (
-        <BirdContext.Provider value={{ checkNewBirds, ownedBirds }}>
+        <BirdContext.Provider value={{ checkNewBirds, ownedBirds, showBirds, toggleShowBirds }}>
             {children}
             {/* 새로운 새 획득 시 표시되는 축하 모달 */}
             {newBird && (
