@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
+// 이미지 URL을 전체 경로로 변환하는 헬퍼 함수
+const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url; // 이미 전체 URL인 경우
+    return `${BACKEND_URL}${url}`; // 상대 경로인 경우 백엔드 URL 추가
+};
+
 /**
  * 특정 게시글에 답글을 작성하기 위한 모달 컴포넌트입니다.
  * 텍스트 내용 외에도 이미지 파일을 첨부할 수 있습니다.
@@ -66,7 +73,7 @@ const ReplyModal = ({ post, onClose, onReply }) => {
                 <div className="flex gap-4">
                     <div className="w-10 h-10 rounded-full bg-[#dbe4ca] shrink-0 flex items-center justify-center font-bold text-saesori-green-dark overflow-hidden border border-saesori-green/10">
                         {user?.profileImageUrl ? (
-                            <img src={user.profileImageUrl} alt={user.nickname} className="w-full h-full object-cover" />
+                            <img src={getImageUrl(user.profileImageUrl)} alt={user.nickname} className="w-full h-full object-cover" />
                         ) : (
                             user?.nickname ? user.nickname.charAt(0).toUpperCase() : 'U'
                         )}
