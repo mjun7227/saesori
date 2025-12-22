@@ -19,7 +19,7 @@ import FlyingBird from './components/FlyingBird';
 const FlyingBirdContext = createContext();
 
 export const useFlyingBirdContext = () => {
-  conontext = useContext(FlyingBirdContext);
+  const context = useContext(FlyingBirdContext);
   if (!context) {
     throw new Error('useFlyingBirdContext must be used within FlyingBirdProvider');
   }
