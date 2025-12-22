@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+
+// 백엔드 서버 주소
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
 // 이미지 URL을 전체 경로로 변환하는 헬퍼 함수
 const getImageUrl = (url) => {
     if (!url) return null;
